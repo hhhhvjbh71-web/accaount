@@ -1584,48 +1584,8 @@
         /* ── patch showSection ── */
         (function _ps(){ const o=window.showSection; if(typeof o!=='function'){setTimeout(_ps,200);return;} window.showSection=function(s,b){o(s,b);if(s==='teacher-accounts')TA.init();}; })();
 
-        /* ── preload accounts (for login check) ── */
+        /* ── preload accounts (for login check in app.js checkAppPassword) ── */
         setTimeout(()=>TA.load().catch(()=>{}), 1200);
-
-        /* ── patch checkAppPassword ── */
-        (function _pl(){
-            const o=window.checkAppPassword;
-            if(typeof o!=='function'){setTimeout(_pl,300);return;}
-            window.checkAppPassword=function(val){
-                const accs=TA.getAccounts();
-                const t=accs.find(a=>a.isActive&&String(a.password)===String(val));
-                if(t){
-                    sessionStorage.setItem('mt_active_teacher_id',   String(t.id));
-                    sessionStorage.setItem('mt_active_teacher_name', t.name);
-                    sessionStorage.setItem('mt_active_teacher_school',t.schoolName||'');
-                    sessionStorage.setItem('mt_active_teacher_center',t.centerName||'');
-                    sessionStorage.setItem('app_role','teacher');
-                    const err=document.getElementById('password-error');
-                    const suc=document.getElementById('password-success');
-                    const inp=document.getElementById('app-password-input');
-                    const ps=document.getElementById('password-screen');
-                    const ls=document.getElementById('loading-screen');
-                    if(err) err.style.display='none';
-                    if(suc){suc.style.display='block';suc.innerHTML=`<i class="fas fa-check-circle"></i> أهلاً يا ${t.name}!`;}
-                    if(inp) inp.disabled=true;
-                    if(ps)  ps.style.display='none';
-                    if(ls)  ls.style.display='block';
-                    setTimeout(()=>{
-                        const sp=document.getElementById('app-splash');
-                        if(sp){sp.style.opacity='0';setTimeout(()=>sp.style.display='none',1000);}
-                        if(typeof RBAC!=='undefined') RBAC.applyToUI();
-                    },1800);
-                    return;
-                }
-                const bl=accs.find(a=>!a.isActive&&String(a.password)===String(val));
-                if(bl){
-                    const err=document.getElementById('password-error');
-                    if(err){err.style.display='block';err.innerHTML='<i class="fas fa-ban"></i> هذا الحساب موقوف — تواصل مع الأدمن';}
-                    return;
-                }
-                o(val);
-            };
-        })();
         </script>
 
         <section id="students-section" style="display:none;" class="fade-in">
@@ -4918,6 +4878,7 @@
         <script src="teachers.js?v=1"></script>
         <script src="teachers-attendance.js?v=1"></script>
         <script src="multi-teacher.js?v=1"></script>
+        <script src="teacher-core.js?v=1"></script>
         <!-- ملاحظة: تم إيقاف تحميل device-sync.js — كان يحتوي على نسخة قديمة ومختصرة
              من دوال المزامنة (رفع/استلام الطلاب والمدفوعات فقط، بدون باقي جداول
              البرنامج ولا الإعدادات)، وبما أنه يُحمَّل بعد app.js فكان يستبدل (override)

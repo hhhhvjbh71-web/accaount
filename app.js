@@ -13188,6 +13188,56 @@ function checkAppPassword(val) {
 
     const isCorrect = (val === mainPass) || (val === savedPass);
 
+    // ── التحقق من كلمات مرور المدرسين (teacher-core.js) ──
+    // يُفضَّل على السكرتارية — المدرس له أولوية
+    if (!isCorrect && val.length >= 4) {
+        const taAccounts = (typeof TA !== 'undefined') ? TA.getAccounts() : [];
+        const matchedTeacher = taAccounts.find(a => a.isActive && String(a.password) === String(val));
+        const blockedTeacher = !matchedTeacher && taAccounts.find(a => !a.isActive && String(a.password) === String(val));
+
+        if (blockedTeacher) {
+            const err = document.getElementById('password-error');
+            if (err) { err.style.display='block'; err.innerHTML='<i class="fas fa-ban"></i> هذا الحساب موقوف — تواصل مع الأدمن'; }
+            return;
+        }
+
+        if (matchedTeacher) {
+            // ── تسجيل جلسة المدرس عبر TeacherSession ──
+            if (typeof TeacherSession !== 'undefined') {
+                TeacherSession.set(matchedTeacher);
+            } else {
+                sessionStorage.setItem('mt_active_teacher_id',     String(matchedTeacher.id));
+                sessionStorage.setItem('mt_active_teacher_name',   matchedTeacher.name);
+                sessionStorage.setItem('mt_active_teacher_school', matchedTeacher.schoolName || '');
+                sessionStorage.setItem('mt_active_teacher_center', matchedTeacher.centerName || '');
+                sessionStorage.setItem('app_role', 'teacher');
+            }
+
+            const passwordScreen = document.getElementById('password-screen');
+            const loadingScreen  = document.getElementById('loading-screen');
+            const passwordInput  = document.getElementById('app-password-input');
+            const errorDiv       = document.getElementById('password-error');
+            const successDiv     = document.getElementById('password-success');
+
+            if (errorDiv)   errorDiv.style.display = 'none';
+            if (successDiv) { successDiv.style.display='block'; successDiv.innerHTML=`<i class="fas fa-check-circle"></i> أهلاً يا ${matchedTeacher.name}! جاري تحميل بياناتك...`; }
+            if (passwordInput)  passwordInput.disabled = true;
+            if (passwordScreen) passwordScreen.style.display = 'none';
+            if (loadingScreen)  loadingScreen.style.display  = 'block';
+
+            setTimeout(async () => {
+                const splash = document.getElementById('app-splash');
+                if (splash) { splash.style.opacity='0'; setTimeout(()=>splash.style.display='none',1000); }
+
+                // تحميل بيانات المدرس (db.load سيُفلتر بـ _tid تلقائياً بعد patch teacher-core.js)
+                await db.load();
+                RBAC.applyToUI();
+                if (typeof startBookingAutoSync === 'function') setTimeout(startBookingAutoSync, 3000);
+            }, 1800);
+            return;
+        }
+    }
+
     // ── التحقق من كلمات مرور السكرتارية (أنظمة الدخول) ──
     let matchedSecretary = null;
     if (!isCorrect && val.length > 0) {
@@ -13263,7 +13313,15 @@ function checkAppPassword(val) {
                 }
             } catch (e) { }
 
-            if (val !== mainPass.substring(0, val.length) && val !== savedPass.substring(0, val.length) && !matchesSecretaryPrefix) {
+            // فحص prefix لكلمات مرور المدرسين أيضاً
+            let matchesTeacherPrefix = false;
+            if (!matchesSecretaryPrefix && typeof TA !== 'undefined') {
+                const taAccounts = TA.getAccounts();
+                matchesTeacherPrefix = taAccounts.some(a => String(a.password || '').startsWith(val));
+            }
+
+            if (val !== mainPass.substring(0, val.length) && val !== savedPass.substring(0, val.length)
+                && !matchesSecretaryPrefix && !matchesTeacherPrefix) {
                 if (err) {
                     err.style.display = 'block';
                     err.innerHTML = `<i class="fas fa-exclamation-triangle"></i> كلمة المرور غير صحيحة!`;
