@@ -106,19 +106,22 @@ const RBAC = (() => {
             if (!role) return;
 
             if (role === 'teacher') {
-                // ── المدرس: يُظهر أقساماً معينة فقط ──
-                const teacherAllowedSections = ['students', 'groups', 'attendance', 'absence',
-                    'subscriptions', 'exams', 'backup'];
-                document.querySelectorAll('.nav-item').forEach(item => {
-                    const link = item.querySelector('.nav-link');
-                    if (!link) { item.style.display = 'none'; return; }
-                    const onclick = link.getAttribute('onclick') || '';
-                    const isAllowed = teacherAllowedSections.some(s => onclick.includes(`'${s}'`));
-                    item.style.display = isAllowed ? '' : 'none';
+                // ── المدرس: يرى كل الـ nav تماماً زي الأدمن
+                // الفرق الوحيد: «إنشاء الحسابات» مخفي عنه
+                document.querySelectorAll('.nav-item[data-rbac]').forEach(item => {
+                    const rbac = item.getAttribute('data-rbac');
+                    // نُظهر كل شيء (all + admin) عدا nav-teacher-accounts
+                    item.style.display = '';
                 });
-                // إخفاء قسم إنشاء الحسابات من الـ sidebar للمدرس
+                // إخفاء «إنشاء الحسابات» فقط
                 const accountsItem = document.getElementById('nav-teacher-accounts');
                 if (accountsItem) accountsItem.style.display = 'none';
+
+                // إضافة class للـ body لإخفاء زر «مسح كل البيانات» بـ CSS
+                document.body.classList.add('teacher-mode');
+                document.body.classList.add('rbac-admin');
+                document.body.classList.remove('rbac-employee');
+
             } else if (role === ROLES.secretary) {
                 // ── السكرتير: يظهر له فقط ما تم تعليمه بـ data-secretary-visible ──
                 document.querySelectorAll('.nav-item').forEach(item => {
@@ -140,8 +143,10 @@ const RBAC = (() => {
             }
 
             // ── الـ header badge ──
-            const teacherName = (role === 'teacher' && typeof MultiTeacher !== 'undefined')
-                ? MultiTeacher.getActiveTeacherName() : null;
+            const teacherName = (role === 'teacher')
+                ? (typeof TeacherSession !== 'undefined' ? TeacherSession.getName()
+                   : sessionStorage.getItem('mt_active_teacher_name'))
+                : null;
             const userSpan = document.querySelector('.user-profile span');
             if (userSpan) {
                 userSpan.textContent = role === 'admin' ? 'المشرف'
@@ -151,7 +156,7 @@ const RBAC = (() => {
             const avatarEl = document.querySelector('.user-profile .avatar');
             if (avatarEl) {
                 const avatarChar = role === 'admin' ? 'A'
-                    : (role === 'teacher' ? (teacherName ? teacherName.charAt(0) : 'م')
+                    : (role === 'teacher' ? (teacherName ? teacherName.trim().charAt(0) : 'م')
                     : (role === 'secretary' ? (_secretaryName ? _secretaryName.charAt(0) : 'س') : 'E'));
                 avatarEl.textContent = avatarChar;
                 avatarEl.style.background = role === 'admin'
@@ -184,10 +189,8 @@ const RBAC = (() => {
             if (!_role) return false;
             if (_role === ROLES.admin) return true;
             if (_role === 'teacher') {
-                // ── المدرس: يرى مجموعة محددة فقط — «إنشاء الحسابات» للأدمن فقط
-                const teacherAllowed = ['students', 'groups', 'attendance', 'absence',
-                    'subscriptions', 'exams', 'backup'];
-                return teacherAllowed.includes(sectionName);
+                // المدرس يدخل على كل شيء عدا «إنشاء الحسابات» فقط
+                return sectionName !== 'teacher-accounts';
             }
             if (_role === ROLES.secretary) {
                 const secretaryAllowed = ['students', 'attendance', 'groups', 'absence'];
@@ -256,6 +259,10 @@ window.employeeSyncPlatform = employeeSyncPlatform;
     body.rbac-employee [onclick*="restoreBackup"],
     body.rbac-employee [onclick*="showPasswordManagement"],
     body.rbac-employee .admin-only-btn { display: none !important; }
+
+    /* ── المدرس: يخفي بطاقة «مسح كل الطلاب» فقط من مركز حماية البيانات ── */
+    body.teacher-mode #card-clear-all-students { display: none !important; }
+    body.teacher-mode #nav-teacher-accounts    { display: none !important; }
 
     /* Role badge في login screen */
     #role-btn-employee.active-role,
