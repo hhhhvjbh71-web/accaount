@@ -790,10 +790,22 @@ function getRecordTimestampValue(record) {
 function mergeRecordsPreferLatest(existing, incoming) {
     const existingTime = getRecordTimestampValue(existing);
     const incomingTime = getRecordTimestampValue(incoming);
+
+    let merged;
     if (existingTime && incomingTime && existingTime > incomingTime) {
-        return Object.assign({}, incoming, existing);
+        merged = Object.assign({}, incoming, existing);
+    } else {
+        merged = Object.assign({}, existing, incoming);
     }
-    return Object.assign({}, existing, incoming);
+
+    // ── حماية groupId: الـ groupId المحلي (existing) يكسب دائماً ──
+    // لأن groupId يتم ربطه بشكل صحيح أثناء الاستلام عبر groupIdMap
+    // واستبداله بالـ groupId القادم من السحابة قد يكون خاطئاً
+    if (existing && existing.groupId !== undefined && existing.groupId !== null && existing.groupId !== '') {
+        merged.groupId = existing.groupId;
+    }
+
+    return merged;
 }
 
 function buildRecordIdentity(table, record) {
@@ -823,13 +835,18 @@ function buildRecordIdentity(table, record) {
         }
     }
 
-    // المجموعات: تطابق بالاسم + الصف + الوقت (بالإضافة للـ id)
+    // المجموعات: تطابق بـ uuid أولاً، ثم (الاسم + الصف + الوقت + الأيام)
     if (table === 'groups') {
-        const name = pickFirstValue(record, ['name', 'title']);
+        // uuid ثابت لا يتغير بين الأجهزة — الأفضل للمطابقة
+        if (record.uuid) {
+            return `${table}:uuid:${normalizeIdentityValue(record.uuid)}`;
+        }
+        const name  = pickFirstValue(record, ['name', 'title']);
         const grade = pickFirstValue(record, ['grade', 'gradeId']);
-        const time = pickFirstValue(record, ['time', 'startTime', 'dayTime']);
+        const time  = pickFirstValue(record, ['time', 'startTime', 'dayTime']);
+        const days  = pickFirstValue(record, ['days', 'schedule', 'weekDays']);
         if (name && grade) {
-            return `${table}:natural:${normalizeIdentityValue(name)}|${normalizeIdentityValue(grade)}|${normalizeIdentityValue(time)}`;
+            return `${table}:natural:${normalizeIdentityValue(name)}|${normalizeIdentityValue(grade)}|${normalizeIdentityValue(time)}|${normalizeIdentityValue(days)}`;
         }
     }
 
@@ -1757,10 +1774,23 @@ const waTemplates = JSON.parse(localStorage.getItem('edu_wa_templates')) || {
 // --- 1. Global Navigation ---
 function showSection(sectionId, btnEl) {
     // ─── RBAC Check ──────────────────────────────────────────
-    if (!RBAC.canViewSection(sectionId)) {
-        showNotification('⛔ ليس لديك صلاحية الوصول لهذا القسم.', 'error');
-        RBAC.log('access_denied', sectionId);
-        return;
+    const role = sessionStorage.getItem('app_role');
+    const isTeacher = !!sessionStorage.getItem('mt_active_teacher_id');
+
+    if (isTeacher) {
+        // المدرس: ممنوع فقط من «إنشاء الحسابات»
+        if (sectionId === 'teacher-accounts') {
+            showNotification('⛔ هذا القسم للأدمن فقط.', 'error');
+            return;
+        }
+        // كل حاجة تانية: مسموح بدون أي قيود
+    } else {
+        // أدمن / سكرتير / موظف: الفحص الاعتيادي
+        if (!RBAC.canViewSection(sectionId)) {
+            showNotification('⛔ ليس لديك صلاحية الوصول لهذا القسم.', 'error');
+            RBAC.log('access_denied', sectionId);
+            return;
+        }
     }
 
     // باسورد منفصل للعهدة اليومية
@@ -2323,8 +2353,9 @@ async function handleAddGroup() {
     const activeGrade = currentGrade || localStorage.getItem('edu_active_grade') || (window.currentPortalGrade) || '1';
     const sysGrade = gradeIdToSystemCode(activeGrade);
 
-    // Create group
-    const newGroup = { id: Date.now(), name, time, grade: sysGrade };
+    // Create group — uuid ثابت يضمن المطابقة الصحيحة بين الأجهزة عند الرفع/الاستلام
+    const groupUuid = `grp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const newGroup = { id: Date.now(), uuid: groupUuid, name, time, grade: sysGrade };
     db.groups.push(newGroup);
 
     // حفظ دائم في IndexedDB مع انتظار اكتمال الكتابة (نحفظ المجموعة الجديدة فقط)
@@ -11193,7 +11224,22 @@ async function uploadStudentsToCloud() {
         }
 
         // ── جمع كل المجموعات المرتبطة بالطلاب المرفوعين ──
+        // + إضافة uuid تلقائي للمجموعات القديمة التي لم تحصل عليه عند الإنشاء
         const allGroups = await StorageEngine.getAll('groups');
+        const groupsNeedingUuid = allGroups.filter(g => !g.uuid);
+        if (groupsNeedingUuid.length > 0) {
+            const updatedGroups = groupsNeedingUuid.map(g => ({
+                ...g,
+                uuid: `grp_${g.id}_${Math.random().toString(36).slice(2, 9)}`
+            }));
+            await StorageEngine.save('groups', updatedGroups);
+            updatedGroups.forEach(ug => {
+                const idx = allGroups.findIndex(g => g.id === ug.id);
+                if (idx !== -1) allGroups[idx] = ug;
+                const dbIdx = db.groups.findIndex(g => g.id === ug.id);
+                if (dbIdx !== -1) db.groups[dbIdx] = ug;
+            });
+        }
         const usedGroupIds = new Set(
             allStudents.map(s => String(s.groupId || '')).filter(Boolean)
         );
@@ -11309,15 +11355,44 @@ async function downloadStudentsFromCloud() {
                     continue;
                 }
 
-                // 2) موجودة محلياً بنفس الاسم (بمعرّف مختلف) → اربط عليها
-                //    لتفادي تكرار نفس المجموعة باسمين/معرّفين مختلفين
-                const byName = localGroupsByName.get(String(cloudGroup.name || '').trim());
-                if (byName) {
-                    groupIdMap.set(cloudIdStr, byName.id);
+                // 2) مطابقة بـ uuid الثابت (لو موجود) — أكثر أماناً من الاسم
+                if (cloudGroup.uuid) {
+                    const byUuid = localGroups.find(g => g.uuid && String(g.uuid) === String(cloudGroup.uuid));
+                    if (byUuid) {
+                        groupIdMap.set(cloudIdStr, byUuid.id);
+                        continue;
+                    }
+                }
+
+                // 3) مطابقة بـ (الاسم + الصف + الوقت + الأيام) معاً — شرط أكثر دقة
+                //    لتفادي الخلط بين مجموعتين نفس الاسم في صفوف مختلفة
+                const cloudName  = String(cloudGroup.name  || '').trim().toLowerCase();
+                const cloudGrade = String(cloudGroup.grade || '').trim().toLowerCase();
+                const cloudTime  = String(cloudGroup.time  || cloudGroup.startTime || '').trim();
+                const cloudDays  = String(cloudGroup.days  || cloudGroup.schedule  || '').trim();
+
+                const byNameGradeTime = localGroups.find(g => {
+                    const lName  = String(g.name  || '').trim().toLowerCase();
+                    const lGrade = String(g.grade || '').trim().toLowerCase();
+                    const lTime  = String(g.time  || g.startTime || '').trim();
+                    const lDays  = String(g.days  || g.schedule  || '').trim();
+
+                    // الاسم + الصف شرط أساسي
+                    if (lName !== cloudName || lGrade !== cloudGrade) return false;
+
+                    // لو الوقت والأيام متوفرين في الاثنين، طابقهم
+                    if (cloudTime && lTime && cloudTime !== lTime) return false;
+                    if (cloudDays && lDays && cloudDays !== lDays) return false;
+
+                    return true;
+                });
+
+                if (byNameGradeTime) {
+                    groupIdMap.set(cloudIdStr, byNameGradeTime.id);
                     continue;
                 }
 
-                // 3) غير موجودة محلياً إطلاقاً → ننشئها بنفس بياناتها بالكامل
+                // 4) غير موجودة محلياً إطلاقاً → ننشئها بنفس بياناتها بالكامل
                 const newGroup = { ...cloudGroup };
                 newGroupsToSave.push(newGroup);
                 localGroups.push(newGroup);
