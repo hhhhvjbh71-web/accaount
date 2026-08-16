@@ -1,7 +1,7 @@
 {
-  "name": "المهندس في الرياضيات",
-  "short_name": "المهندس في الرياضيات",
-  "description": "نظام إدارة المهندس في الرياضيات المتكامل",
+  "name": "EDU TRACK",
+  "short_name": "EDU TRACK",
+  "description": "EDU TRACK — نظام إدارة التعليم المتكامل",
   "start_url": "./",
   "display": "standalone",
   "orientation": "any",

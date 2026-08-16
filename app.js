@@ -314,7 +314,7 @@ async function employeeSyncPlatform() {
 }
 
 /**
- * مس روان ايمن علي v2.0 - Core Intelligence Engine
+ * EDU TRACK v3.0 - Core Intelligence Engine
  */
 
 // --- Database & Persistence ---
@@ -736,7 +736,7 @@ let examScanner = null;
 async function updateDataInFile() {
     if (!directoryHandle) return;
     try {
-        const fileHandle = await directoryHandle.getFileHandle('edumaster_data.json', { create: true });
+        const fileHandle = await directoryHandle.getFileHandle('edutrack_data.json', { create: true });
         const writable = await fileHandle.createWritable();
 
         const snapshot = {};
@@ -1189,7 +1189,7 @@ async function hydrateDatabase(dataBlob) {
 async function loadDataFromFile() {
     if (!directoryHandle) return;
     try {
-        const fileHandle = await directoryHandle.getFileHandle('edumaster_data.json');
+        const fileHandle = await directoryHandle.getFileHandle('edutrack_data.json');
         const file = await fileHandle.getFile();
         const contents = await file.text();
         if (contents) {
@@ -1224,7 +1224,7 @@ async function importFromFolder() {
         showNotification('جاري مسح المجلد بحثاً عن ملفات البيانات...', 'info');
 
         // Scan for common data file names
-        const fileNames = ['data.js', 'data (5).js', 'edumaster_data.json', 'edu_master_db.json', 'backup.json'];
+        const fileNames = ['data.js', 'data (5).js', 'edutrack_data.json', 'edu_master_db.json', 'backup.json'];
         let foundAny = false;
 
         for (const fName of fileNames) {
@@ -10250,22 +10250,22 @@ function initExperienceEnhancements() {
 function getProgramProfile() {
     if (!db._settings.appProfile) {
         db._settings.appProfile = {
-            centerName: 'مس روان ايمن علي',
+            centerName: 'EDU TRACK',
             teacherName: '',
-            stickerTitle: 'مس روان ايمن علي',
+            stickerTitle: 'EDU TRACK',
             phone: ''
         };
     }
     // ضمان وجود centerName الافتراضي لو كان فارغًا
     if (!db._settings.appProfile.centerName) {
-        db._settings.appProfile.centerName = 'مس روان ايمن علي';
+        db._settings.appProfile.centerName = 'EDU TRACK';
     }
     return db._settings.appProfile;
 }
 
 function applyProgramProfile() {
     const profile = getProgramProfile();
-    const centerDisplay = profile.centerName || 'مس روان ايمن علي';
+    const centerDisplay = profile.centerName || 'EDU TRACK';
     document.title = `${centerDisplay} | نظام الإدارة`;
 
     // شعار الشريط الجانبي
@@ -12516,7 +12516,7 @@ const exposures = {
         snapshot.gradesList = gradesList;
 
         const dataJsContent = `/**
- * مس روان ايمن علي Data Storage File - للبيع والنقل
+ * EDU TRACK Data Storage File - للبيع والنقل
  * Created: ${new Date().toLocaleString()}
  */
 window.edu_initial_data = ${JSON.stringify(snapshot, null, 4)};`;
