@@ -412,78 +412,76 @@ const TeacherSettings = {
 ══════════════════════════════════════════════════════════════ */
 function _patchCloudSync() {
     /* رفع كل البيانات */
+    const _origUploadAll = window.uploadPaymentsToCloud;
     window.uploadPaymentsToCloud = async function() {
         const tid = TeacherSession.getId();
-        if (!tid && !RBAC.isAdmin()) {
-            showNotification('يجب تسجيل الدخول أولاً', 'error'); return;
-        }
-        const activeTid = tid || prompt('أدخل Teacher ID للرفع:');
-        if (!activeTid) return;
 
+        // الأدمن: يستخدم الدالة الأصلية دائماً (device_students / device_groups / ...)
+        if (!tid) {
+            if (typeof _origUploadAll === 'function') return _origUploadAll();
+            showNotification('❌ دالة الرفع الأصلية غير متاحة', 'error');
+            return;
+        }
+
+        // المدرس: يرفع على مساره الخاص teachers/{tid}/...
         showNotification('🔗 جاري رفع بياناتك إلى السحابة...', 'info');
         try {
-            const total = await TeacherDB.uploadAll(activeTid, (table) => {
-                console.log(`[Upload] ${table}...`);
-            });
-            // رفع الإعدادات
-            if (db._settings) await TeacherDB.uploadSettings(activeTid, db._settings);
-            showNotification(`✅ تم رفع ${total} سجل بنجاح إلى مسار المدرس في السحابة`, 'success');
-            RBAC.log && RBAC.log('teacher_upload_all', `${total} records for teacher ${activeTid}`);
+            const total = await TeacherDB.uploadAll(tid);
+            if (db._settings) await TeacherDB.uploadSettings(tid, db._settings);
+            showNotification(`✅ تم رفع ${total} سجل بنجاح`, 'success');
         } catch(e) {
             console.error('[Upload] Error:', e);
-            showNotification('❌ حدث خطأ أثناء الرفع: ' + e.message, 'error');
+            showNotification('❌ خطأ أثناء الرفع: ' + e.message, 'error');
         }
     };
 
     /* استلام كل البيانات */
+    const _origDownloadAll = window.downloadPaymentsFromCloud;
     window.downloadPaymentsFromCloud = async function() {
         const tid = TeacherSession.getId();
-        if (!tid && !RBAC.isAdmin()) {
-            showNotification('يجب تسجيل الدخول أولاً', 'error'); return;
+
+        // الأدمن: يستخدم الدالة الأصلية دائماً
+        if (!tid) {
+            if (typeof _origDownloadAll === 'function') return _origDownloadAll();
+            showNotification('❌ دالة الاستلام الأصلية غير متاحة', 'error');
+            return;
         }
-        const activeTid = tid || prompt('أدخل Teacher ID للاستلام:');
-        if (!activeTid) return;
 
-        if (!confirm(`هل تريد استلام بيانات المدرس ${activeTid} من السحابة؟\nسيتم دمج البيانات مع الموجودة محلياً.`)) return;
-
+        // المدرس: يستلم من مساره الخاص teachers/{tid}/...
         showNotification('🔗 جاري استلام بياناتك من السحابة...', 'info');
         try {
-            const { tables, total } = await TeacherDB.downloadAll(activeTid, (table) => {
-                console.log(`[Download] ${table}...`);
-            });
+            const { tables, total } = await TeacherDB.downloadAll(tid);
 
-            // حفظ كل جدول في IndexedDB مع إضافة _tid
             for (const [tableName, records] of Object.entries(tables)) {
                 if (tableName === '_settings' || !Array.isArray(records) || !records.length) continue;
                 await StorageEngine.save(tableName, records);
             }
-
-            // دمج الإعدادات
             if (tables._settings && Object.keys(tables._settings).length) {
                 db._settings = Object.assign(db._settings || {}, tables._settings);
-                TeacherSettings.save(db._settings, activeTid);
+                TeacherSettings.save(db._settings, tid);
                 localStorage.setItem('edu_master_settings', JSON.stringify(db._settings));
             }
-
             await db.load();
             if (typeof renderStudents === 'function') renderStudents();
-            showNotification(`✅ تم استلام ${total} سجل بنجاح من مسار المدرس في السحابة`, 'success');
+            showNotification(`✅ تم استلام ${total} سجل بنجاح`, 'success');
         } catch(e) {
             console.error('[Download] Error:', e);
-            showNotification('❌ حدث خطأ أثناء الاستلام: ' + e.message, 'error');
+            showNotification('❌ خطأ أثناء الاستلام: ' + e.message, 'error');
         }
     };
 
     /* رفع الطلاب فقط */
-    const origUploadStudents = window.uploadStudentsToCloud;
+    const _origUploadStudents = window.uploadStudentsToCloud;
     window.uploadStudentsToCloud = async function() {
         const tid = TeacherSession.getId();
-        if (!tid) return origUploadStudents && origUploadStudents(); // أدمن: الوظيفة الأصلية
+        // الأدمن → الدالة الأصلية
+        if (!tid) return typeof _origUploadStudents === 'function' ? _origUploadStudents() : null;
 
+        // المدرس → يرفع طلابه فقط على مساره
         showNotification('🔗 جاري رفع طلابك ومجموعاتك...', 'info');
         try {
             const myStudents = TeacherFilter.filter(db.students || []);
-            const myGroups   = TeacherFilter.filter(db.groups || []);
+            const myGroups   = TeacherFilter.filter(db.groups   || []);
             const n1 = await TeacherDB.uploadTable(tid, 'students', myStudents);
             const n2 = await TeacherDB.uploadTable(tid, 'groups', myGroups);
             showNotification(`✅ تم رفع ${n1} طالب و ${n2} مجموعة`, 'success');
@@ -493,11 +491,13 @@ function _patchCloudSync() {
     };
 
     /* استلام الطلاب فقط */
-    const origDownloadStudents = window.downloadStudentsFromCloud;
+    const _origDownloadStudents = window.downloadStudentsFromCloud;
     window.downloadStudentsFromCloud = async function() {
         const tid = TeacherSession.getId();
-        if (!tid) return origDownloadStudents && origDownloadStudents();
+        // الأدمن → الدالة الأصلية
+        if (!tid) return typeof _origDownloadStudents === 'function' ? _origDownloadStudents() : null;
 
+        // المدرس → يستلم طلابه فقط من مساره
         showNotification('🔗 جاري استلام طلابك ومجموعاتك...', 'info');
         try {
             const students = await TeacherDB.downloadTable(tid, 'students');

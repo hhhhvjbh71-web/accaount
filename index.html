@@ -1247,13 +1247,13 @@
             function _ensureIDB() {
                 return new Promise(resolve => {
                     if (typeof StorageEngine === 'undefined' || !StorageEngine.db) return resolve(false);
+                    // لو الـ store موجود بالفعل → تمام
                     if (StorageEngine.db.objectStoreNames.contains(STORE)) return resolve(true);
-                    const v = StorageEngine.db.version + 1;
-                    StorageEngine.db.close();
-                    const req = indexedDB.open('EduMasterLargeDB', v);
-                    req.onupgradeneeded = e => { if (!e.target.result.objectStoreNames.contains(STORE)) e.target.result.createObjectStore(STORE,{keyPath:'id'}); };
-                    req.onsuccess = e => { StorageEngine.db = e.target.result; resolve(true); };
-                    req.onerror   = () => resolve(false);
+                    // ⚠️ لا نغلق الـ DB ولا نفتحه من جديد — ده سبب خطأ IDBIndex
+                    // بدلاً من ذلك نحفظ الحسابات في localStorage فقط كـ fallback
+                    // وFire base هو المصدر الأساسي للحسابات
+                    console.warn('[TA] teacherAccounts store not in IDB — using Firebase + localStorage only');
+                    resolve(false);
                 });
             }
 
