@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
 //  dashboard-bridge.js  — جسر الربط الكامل
-//  منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء
+//  منصة الدكتور محمد عبد الله — عميد الفيزياء
 //
 //  يُحمَّل هذا الملف في index.html بعد data.js وقبل app.js
 //
@@ -192,7 +192,7 @@
         const tStr   = String(dc.term  || 'all');
         const isFree = dc.type === 'free' || !dc.price || Number(dc.price) === 0;
         const thumb  = dc.thumbnail || dc.thumb || '';
-        const color  = dc.headerColor || dc.color || dc.bg || 'linear-gradient(135deg,#0f172a,#1e40af)';
+        const color  = dc.headerColor || dc.color || dc.bg || 'linear-gradient(135deg,#1a1227,#572e9f)';
         const lessons = dedupeLessons(dc.lessons || []);
         const id = String(dc.id);
 
@@ -313,7 +313,7 @@
             bannerColor: dc.bannerColor || color,
             cardShowBadge: dc.cardShowBadge !== false,
             cardNamePosition: dc.cardNamePosition || 'top',
-            cardNameBg: dc.cardNameBg || '#0284c7',
+            cardNameBg: dc.cardNameBg || '#5426a3',
             cardNameColor: dc.cardNameColor || '#ffffff',
             cardShowStatus: dc.cardShowStatus !== false,
             cardShowHover: dc.cardShowHover !== false,
@@ -508,13 +508,41 @@
         }
     }
 
-    // ── مزامنة مباشرة مع Firebase collection('quizzes') ──────────────
-    // بدون هذا الجزء: الاختبار يتحفظ في Firebase من الداشبورد بنجاح،
-    // لكن واجهة الطالب (index.html) محدش بيجيبه من هناك أبداً — بيفضل
-    // يدوّر في localStorage بس، واللي بيكون فاضي على أي جهاز/متصفح
-    // تاني غير جهاز المعلم. هذا الـ listener هو المصدر الحقيقي الوحيد
-    // اللي بيوصل الاختبارات لأي طالب على أي جهاز.
+    // ── مزامنة الاختبارات للطالب من Firebase ──────────────────────────
+    // الطالب يقرأ collection('quizzes_public') = نسخة الاختبار **بدون الإجابات الصحيحة**
+    // (تُكتب من الداشبورد عند كل حفظ). الإجابات الصحيحة تبقى في collection('quizzes')
+    // ولا تُجلب إلا لحظة التصحيح (QuizService.finalize).
+    // fallback: لو النسخة العامة لم تُنشر بعد لاختبار قديم → يُجلب من 'quizzes' ويُجرَّد
+    // من الإجابات قبل التخزين (ينتهي الاحتياج لهذا بمجرد فتح الداشبورد مرة واحدة).
     var _quizzesSyncStarted = false;
+    var QUIZ_CACHE_KEY = 'iraqiplatform_quizzes';
+
+    function stripAnswers(q) {
+        if (!q) return q;
+        var c = JSON.parse(JSON.stringify(q));
+        (c.questionsList || c.questions || []).forEach(function (x) {
+            delete x.correctOpt; delete x.correct; delete x.correctIndex; delete x.correctAnswer;
+            delete x.answer; delete x.explanation; delete x.solution;
+        });
+        c._public = true;
+        return c;
+    }
+    function readQuizCache() { try { return JSON.parse(localStorage.getItem(QUIZ_CACHE_KEY) || '[]'); } catch (e) { return []; } }
+
+    function applyQuizList(list) {
+        // نحتفظ بالعناصر التي جُلبت عند الطلب (_fallback) ولم تصل بعد في القائمة العامة
+        var keep = readQuizCache().filter(function (x) {
+            return x && x._fallback && !list.some(function (y) { return String(y.id) === String(x.id); });
+        });
+        localStorage.setItem(QUIZ_CACHE_KEY, JSON.stringify(list.concat(keep)));
+        window.__quizzesLoaded = true;
+        try {
+            var _hash = (window.location.hash || '').replace(/^#/, '');
+            // لا نعيد رسم صفحة الاختبار الحية حتى لا نقطع الطالب أثناء الحل
+            if (typeof window.handleRoute === 'function' && _hash.indexOf('test/') !== 0) window.handleRoute();
+        } catch (e) {}
+        window.dispatchEvent(new CustomEvent('quizzesUpdated', { detail: { count: list.length } }));
+    }
 
     function startQuizzesFirebaseSync() {
         if (_quizzesSyncStarted) return;
@@ -522,32 +550,31 @@
         if (!db) return;
         _quizzesSyncStarted = true;
         try {
-            db.collection('quizzes').onSnapshot({ includeMetadataChanges: false }, function(snapshot) {
+            db.collection('quizzes_public').onSnapshot({ includeMetadataChanges: false }, function (snapshot) {
                 var list = [];
-                snapshot.forEach(function(doc) {
-                    var d = doc.data() || {};
+                snapshot.forEach(function (doc) {
+                    var d = stripAnswers(doc.data() || {});
                     if (d.id == null) d.id = doc.id;
                     list.push(d);
                 });
-                localStorage.setItem('iraqiplatform_quizzes', JSON.stringify(list));
-                localStorage.setItem('alsaqr_quizzes', JSON.stringify(list));
-
-                // إعادة رسم الصفحة الحالية لو الطالب فاتح درس/اختبار فعلاً —
-                // إلا لو كان وسط حل اختبار حي (test/) عشان منمسحش إجاباته
-                try {
-                    var _hash = (window.location.hash || '').replace(/^#/, '');
-                    if (typeof window.handleRoute === 'function' && _hash.indexOf('test/') !== 0) {
-                        window.handleRoute();
-                    }
-                } catch(e) {}
-
-                window.dispatchEvent(new CustomEvent('quizzesUpdated', { detail: { count: list.length } }));
-            }, function(err) {
-                console.warn('[Bridge] quizzes snapshot error:', err.message);
+                if (list.length) { applyQuizList(list); return; }
+                // لا توجد نسخ عامة بعد → fallback مؤقت من 'quizzes' (بعد تجريد الإجابات)
+                db.collection('quizzes').get().then(function (snap) {
+                    var l2 = [];
+                    snap.forEach(function (doc) {
+                        var d = stripAnswers(doc.data() || {});
+                        if (d.id == null) d.id = doc.id;
+                        d._fallback = true;
+                        l2.push(d);
+                    });
+                    applyQuizList(l2);
+                }).catch(function () { applyQuizList([]); });
+            }, function (err) {
+                console.warn('[Bridge] quizzes_public snapshot error:', err.message);
                 _quizzesSyncStarted = false;
             });
-            console.info('[Bridge] ✅ Firebase quizzes listener attached');
-        } catch(e) {
+            console.info('[Bridge] ✅ Firebase quizzes_public listener attached');
+        } catch (e) {
             console.warn('[Bridge] quizzes listener setup failed:', e.message);
             _quizzesSyncStarted = false;
         }
@@ -557,18 +584,15 @@
     if (window.db) {
         startFirebaseBridgeSync();
         startQuizzesFirebaseSync();
-        startQuizAttemptsFirebaseSync();
     } else {
         window.addEventListener('firebaseReady', function() {
             startFirebaseBridgeSync();
             startQuizzesFirebaseSync();
-            startQuizAttemptsFirebaseSync();
         });
-        [1000, 3000, 6000, 10000, 15000].forEach(function(delay) {
+        [1000, 3000, 6000].forEach(function(delay) {
             setTimeout(function() {
                 if (!_bridgeStarted && window.db) startFirebaseBridgeSync();
                 if (!_quizzesSyncStarted && window.db) startQuizzesFirebaseSync();
-                startQuizAttemptsFirebaseSync(); // بتتأكد بنفسها من عدم التكرار + بتعيد المحاولة لو المستخدم لسه ملوش session
             }, delay);
         });
     }
@@ -588,36 +612,27 @@
         syncStudents:    syncStudents,
         getDashCourses:  getDashCourses,
         convertCourse:   dashCourseToIraqi,
-        syncQuizzes:     startQuizzesFirebaseSync,
-        syncAttempts:    startQuizAttemptsFirebaseSync
+        syncQuizzes:     startQuizzesFirebaseSync
     };
 
-    // ── getQuizById: يبحث في كلا مفتاحَي التخزين ───────────────────
+    // ── getQuizById: من الكاش العام فقط (بدون إجابات) ───────────────
     global.getQuizById = function(quizId) {
         if (!quizId) return null;
         try {
-            // ابحث في iraqiplatform_quizzes أولاً (المزامنة الجديدة)
-            var iqList = JSON.parse(localStorage.getItem('iraqiplatform_quizzes') || '[]');
-            var found  = iqList.find(function(q) { return String(q.id) === String(quizId); });
-            if (found) return found;
-            // fallback: alsaqr_quizzes (الداشبورد)
-            var aqList = JSON.parse(localStorage.getItem('alsaqr_quizzes') || '[]');
-            return aqList.find(function(q) { return String(q.id) === String(quizId); }) || null;
+            var found = readQuizCache().find(function(q) { return String(q.id) === String(quizId); });
+            return found ? stripAnswers(found) : null;
         } catch(e) { return null; }
     };
 
-    // ── getAllQuizzes: يجلب كل الاختبارات ────────────────────────────
+    // ── getAllQuizzes: كل الاختبارات المتاحة للطالب (بدون إجابات) ──────
     global.getAllQuizzes = function() {
-        try {
-            return JSON.parse(localStorage.getItem('alsaqr_quizzes') || '[]');
-        } catch(e) { return []; }
+        try { return readQuizCache().map(stripAnswers); } catch(e) { return []; }
     };
 
     // ── saveQuizAttempt: يحفظ نتيجة الطالب في alsaqr_quiz_attempts ─
     global.saveQuizAttempt = function(attempt) {
         // attempt = { userId, userName, quizId, courseId, lessonId, score, total,
         //              correct, wrong, percentage, passed, answers, submittedAt }
-        attempt.status = 'submitted'; // ← علامة "تم الحل نهائيًا" التي تمنع أي محاولة جديدة
         try {
             var KEY = 'alsaqr_quiz_attempts';
             var attempts = JSON.parse(localStorage.getItem(KEY) || '[]');
@@ -662,11 +677,9 @@
                 }));
             } catch(_) {}
 
-            // مزامنة مع Firebase إذا متاح — نفس docId المستخدم في
-            // beginOrResumeQuizAttempt بالظبط عشان يحدّث نفس المستند
-            // (ويحافظ على startedAt الأصلي) بدل إنشاء مستند مكرر
+            // مزامنة مع Firebase إذا متاح
             if (window.db) {
-                var docId = 'ATT_' + String(attempt.userId || 'anon') + '_' + String(attempt.quizId);
+                var docId = (attempt.userId || 'anon') + '_' + attempt.quizId;
                 window.db.collection('quiz_attempts').doc(docId).set(attempt, { merge: true })
                     .catch(function(e) { console.warn('[Bridge] quiz_attempt Firebase sync:', e); });
             }
@@ -682,151 +695,6 @@
             }) || null;
         } catch(e) { return null; }
     };
-
-    // ═══════════════════════════════════════════════════════════════
-    // مزامنة محاولات الاختبار من Firebase — مصدر الحقيقة الوحيد لمنع
-    // إعادة الحل. بدون هذا الجزء: getQuizAttempt بيقرأ localStorage
-    // بس، واللي بيكون فاضي على أي جهاز/متصفح تاني غير اللي حل منه
-    // الطالب الاختبار فعليًا — فيقدر "يحل تاني" من جهاز تاني أو حتى بعد
-    // مسح بيانات المتصفح. هذا الـ listener مقصور على محاولات المستخدم
-    // الحالي فقط (where userId == ...) لأسباب أداء وخصوصية.
-    // ═══════════════════════════════════════════════════════════════
-    var _attemptsSyncStarted = false;
-    var _attemptsSyncUserId  = null;
-
-    function _getCurrentSessionUserId() {
-        try {
-            var raw = localStorage.getItem('iraqiplatform_current_user');
-            if (!raw) return null;
-            var u = JSON.parse(raw);
-            return (u && u.id) ? String(u.id) : null;
-        } catch(e) { return null; }
-    }
-
-    function startQuizAttemptsFirebaseSync() {
-        var db = window.db;
-        if (!db) return;
-        var uid = _getCurrentSessionUserId();
-        if (!uid) return; // لسه محدش سجل دخول — هنعيد المحاولة لاحقاً
-        if (_attemptsSyncStarted && _attemptsSyncUserId === uid) return; // شغال بالفعل لنفس المستخدم
-        _attemptsSyncStarted = true;
-        _attemptsSyncUserId = uid;
-        try {
-            db.collection('quiz_attempts').where('userId', '==', uid)
-                .onSnapshot({ includeMetadataChanges: false }, function(snapshot) {
-                    var list = [];
-                    snapshot.forEach(function(doc) {
-                        var d = doc.data() || {};
-                        list.push(d);
-                    });
-                    localStorage.setItem('alsaqr_quiz_attempts', JSON.stringify(list));
-
-                    try {
-                        var _hash = (window.location.hash || '').replace(/^#/, '');
-                        if (typeof window.handleRoute === 'function' && _hash.indexOf('test/') !== 0) {
-                            window.handleRoute();
-                        }
-                    } catch(e) {}
-
-                    window.dispatchEvent(new CustomEvent('quizAttemptsSynced', { detail: { count: list.length } }));
-                }, function(err) {
-                    console.warn('[Bridge] quiz_attempts snapshot error:', err.message);
-                    _attemptsSyncStarted = false;
-                });
-            console.info('[Bridge] ✅ Firebase quiz_attempts listener attached for user', uid);
-        } catch(e) {
-            console.warn('[Bridge] quiz_attempts listener setup failed:', e.message);
-            _attemptsSyncStarted = false;
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // beginOrResumeQuizAttempt — نقطة الحقيقة الوحيدة لبدء/استئناف
-    // محاولة اختبار. بيرجع Promise دايماً (حتى لو Firebase مش متاح،
-    // بيرجع نتيجة احتياطية آمنة من غير ما يكسر شيء).
-    //
-    // النتيجة: {
-    //   already: bool          — هل فيه محاولة "submitted" فعلاً؟
-    //   attempt: object|null   — بيانات المحاولة المكتملة (لو already)
-    //   startedAtMs: number    — وقت بداية المحاولة (مرجعية السيرفر لو متاح)
-    //   remainingSeconds: number|null — null يعني بدون وقت محدد للاختبار
-    //   serverAnchored: bool   — هل الوقت محسوب من السيرفر فعلاً؟
-    // }
-    // ═══════════════════════════════════════════════════════════════
-    global.beginOrResumeQuizAttempt = function(userId, quizId, courseId, lessonId, durationSeconds) {
-        function localFallback() {
-            var existing = global.getQuizAttempt(userId, quizId);
-            if (existing && existing.status === 'submitted') {
-                return { already: true, attempt: existing, startedAtMs: null, remainingSeconds: null, serverAnchored: false };
-            }
-            return {
-                already: false, attempt: null,
-                startedAtMs: Date.now(),
-                remainingSeconds: durationSeconds > 0 ? durationSeconds : null,
-                serverAnchored: false
-            };
-        }
-
-        if (!window.db || !userId || !quizId) {
-            return Promise.resolve(localFallback());
-        }
-
-        // ملحوظة: صيغة الـ ID هنا (ATT_userId_quizId) لازم تفضل مطابقة
-        // تمامًا لنفس الصيغة اللي زرار "تصفير وإعادة" في الداشبورد بيحذفها
-        // (dashboard.html → resetStudentAttempt) وإلا زرار الأدمن مش هيقدر
-        // يصفّر محاولة الطالب فعليًا.
-        var docId = 'ATT_' + String(userId) + '_' + String(quizId);
-        var ref = window.db.collection('quiz_attempts').doc(docId);
-
-        return ref.get().then(function(snap) {
-            var data = snap.exists ? snap.data() : null;
-
-            if (data && data.status === 'submitted') {
-                return { already: true, attempt: data, startedAtMs: null, remainingSeconds: null, serverAnchored: false };
-            }
-
-            // فيه محاولة "in_progress" محفوظة بالفعل → استخدم startedAt الأصلي
-            if (data && data.startedAt) {
-                return ref.set({ lastCheckedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true })
-                    .then(function() { return ref.get(); })
-                    .then(function(freshSnap) {
-                        var fresh = freshSnap.data() || {};
-                        var localNow = Date.now();
-                        var startedAtMs = fresh.startedAt && fresh.startedAt.toMillis ? fresh.startedAt.toMillis() : localNow;
-                        var checkedAtMs = fresh.lastCheckedAt && fresh.lastCheckedAt.toMillis ? fresh.lastCheckedAt.toMillis() : localNow;
-                        var offset = checkedAtMs - localNow; // فرق ساعة السيرفر عن جهاز الطالب
-                        var serverNow = Date.now() + offset;
-                        var elapsedSec = Math.max(0, Math.floor((serverNow - startedAtMs) / 1000));
-                        var remaining = (durationSeconds > 0) ? Math.max(0, durationSeconds - elapsedSec) : null;
-                        return { already: false, attempt: fresh, startedAtMs: startedAtMs, remainingSeconds: remaining, serverAnchored: true };
-                    })
-                    .catch(function() { return localFallback(); });
-            }
-
-            // مفيش محاولة قبل كده → ابدأ واحدة جديدة بتوقيت السيرفر
-            return ref.set({
-                userId: userId, quizId: quizId, courseId: courseId || null, lessonId: lessonId || null,
-                status: 'in_progress',
-                startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastCheckedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true })
-                .then(function() { return ref.get(); })
-                .then(function(freshSnap) {
-                    var fresh = freshSnap.data() || {};
-                    var localNow = Date.now();
-                    var startedAtMs = fresh.startedAt && fresh.startedAt.toMillis ? fresh.startedAt.toMillis() : localNow;
-                    return {
-                        already: false, attempt: fresh, startedAtMs: startedAtMs,
-                        remainingSeconds: durationSeconds > 0 ? durationSeconds : null,
-                        serverAnchored: true
-                    };
-                })
-                .catch(function() { return localFallback(); });
-        }).catch(function() {
-            return localFallback();
-        });
-    };
-
 
     // ── إعادة المزامنة عند وصول بيانات من Firebase ─────────────────────
     // يُطلق firebase-service.js هذا الحدث عند تحديث الكورسات من السحابة
@@ -856,6 +724,6 @@
         syncStudents();
     }
 
-    console.info('[منصة الخلية — أ/ إسلام عبدالواحد] ✅ dashboard-bridge.js loaded — ' + getDashCourses().length + ' كورسات Dashboard متاحة');
+    console.info('[منصة الدكتور محمد عبد الله] ✅ dashboard-bridge.js loaded — ' + getDashCourses().length + ' كورسات Dashboard متاحة');
 
 })(window);

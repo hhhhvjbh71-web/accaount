@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 // templates.js — HTML Templates separated from Application Logic
-// Mr. Islam Abdelwahed — Biology Platform
+// منصة الدكتور محمد عبد الله — عميد الفيزياء — Physics Platform
 // ═══════════════════════════════════════════════════════════════
 
 window.Templates = (function () {
@@ -65,7 +65,7 @@ window.Templates = (function () {
         <div style="padding-top:calc(var(--header-height) + var(--space-2xl));padding-bottom:var(--space-3xl);">
             <div class="container">
                 <div class="text-center" style="margin-bottom:var(--space-2xl);">
-                    <span class="section-badge"><span class="icon">📚</span> Courses</span>
+                    <span class="section-badge sb-blue"><span class="icon">📚</span> Courses</span>
                     <h2 class="section-title">All Available Courses</h2>
                     <p class="section-subtitle">Choose your grade level and explore courses available for you.</p>
                 </div>
@@ -89,31 +89,22 @@ window.Templates = (function () {
             <div class="hb-bg" aria-hidden="true">
                 <div class="hb-orb hb-orb-1"></div>
                 <div class="hb-orb hb-orb-2"></div>
-                <span class="hb-float hb-f1">🧬 DNA</span>
-                <span class="hb-float hb-f2">RNA</span>
-                <span class="hb-float hb-f3">O₂ ⇌ CO₂</span>
-                <span class="hb-float hb-f4">🔬 Cell</span>
-                <span class="hb-float hb-f5">ATP</span>
-                <span class="hb-float hb-f6">Mitosis</span>
+                <span class="hb-float hb-f1">F = ma</span>
+                <span class="hb-float hb-f2">E = mc²</span>
+                <span class="hb-float hb-f3">V = IR</span>
+                <span class="hb-float hb-f4">λ = v / f</span>
+                <span class="hb-float hb-f5">ΔE = hf</span>
+                <span class="hb-float hb-f6">∑F = 0</span>
             </div>
             <div class="hb-container">
                 <div class="hb-body">
-                    <div class="hb-img-side">
-                        <h1 class="hb-heading">
-                            <span class="hb-h-prefix">Biology with</span>
-                            <span class="hb-h-name">Mr. Islam Abdelwahed</span>
-                            <span class="hb-h-suffix">Secondary &amp; Preparatory</span>
-                        </h1>
-                        <div class="hb-img-frame">
-                            <div class="hb-img-glow" aria-hidden="true"></div>
-                            <img src="teacher-new.jpg?v=20260912" alt="Mr. Islam Abdelwahed"
-                                class="hb-img" loading="eager" onerror="this.src='صورة المدرس الجديد.jpeg'">
-                            <div class="hb-img-caption">
-                                <span class="hb-img-badge">🧬 Biology Teacher</span>
-                            </div>
-                        </div>
-                    </div>
                     <div class="hb-text-side">
+                        <h1 class="hb-heading">
+                            <span class="hb-h-prefix">Physics with</span>
+                            <span class="hb-h-name" dir="rtl">الدكتور محمد عبد الله</span>
+                            <span class="hb-h-suffix" dir="rtl">عميد الفيزياء</span>
+                            <span class="hb-h-levels">Secondary &amp; Preparatory</span>
+                        </h1>
                         <div class="hb-btns">
                             <a href="#register" class="hb-btn-orange">
                                 <span>✨ Create Account Now</span>
@@ -124,6 +115,13 @@ window.Templates = (function () {
                             </a>
                         </div>
                     </div>
+
+                    <div class="hb-img-side">
+                        <div class="hb-img-frame">
+                            <img src="teacher-hero.webp?v=20260923" alt="الدكتور محمد عبد الله — عميد الفيزياء" class="hb-img" width="738" height="922" loading="eager" decoding="async" fetchpriority="high" onload="this.parentNode.classList.add('is-loaded')" onerror="if(this.dataset.fb){this.parentNode.classList.add('is-loaded')}else{this.dataset.fb=1;this.classList.add('is-fb');this.src='hero-teacher.jpg?v=20260923'}">
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </section>`;
@@ -134,7 +132,7 @@ window.Templates = (function () {
         return `
         <section class="page-section" style="background:var(--bg-alt);">
             <div class="container text-center">
-                <span class="section-badge"><span class="icon">🚀</span> Easy Start</span>
+                <span class="section-badge sb-teal"><span class="icon">🚀</span> Easy Start</span>
                 <h2 class="section-title">How to Start Your Journey in 3 Steps</h2>
                 <p class="section-subtitle">Simple and fast steps to get started in just a few minutes.</p>
                 <div class="steps-grid">
@@ -170,24 +168,24 @@ window.Templates = (function () {
                     <div class="teacher-visual">
                         <div class="teacher-avatar-circle">👨‍🏫</div>
                         <div class="teacher-name-badge">${teacherName}</div>
-                        <div class="teacher-role-badge">Biology Expert &amp; Teacher for Secondary &amp; Preparatory</div>
+                        <div class="teacher-role-badge">عميد الفيزياء — Secondary &amp; Preparatory</div>
                     </div>
                     <div class="teacher-content">
-                        <span class="section-badge"><span class="icon">⭐</span> Lead Instructor</span>
-                        <h2>Making Biology Clear, Intuitive &amp; Inspiring</h2>
+                        <span class="section-badge sb-volt"><span class="icon">⭐</span> Lead Instructor</span>
+                        <h2>Making Physics Clear, Intuitive &amp; Inspiring</h2>
                         <p>
-                            "My core mission is not merely to help students memorize, but to build a true biological mindset that understands how living systems work and connects every concept to real life. Over 15+ years, I have proudly guided thousands of students to top faculties and full marks."
+                            "My core mission is not merely to teach formulas, but to build a scientific mindset that understands where the laws come from and how to apply them to solve the hardest problems with confidence. Over 15+ years, I have proudly guided thousands of students to top faculties and full marks."
                         </p>
                         <div class="teacher-pills">
                             <div class="teacher-pill"><span>🏆</span> 15+ Years Experience</div>
                             <div class="teacher-pill"><span>🎯</span> Top Nationwide Ranks</div>
-                            <div class="teacher-pill"><span>🔬</span> Exclusive Simplified Method</div>
+                            <div class="teacher-pill"><span>⚛️</span> Exclusive Simplified Method</div>
                             <div class="teacher-pill"><span>⚡</span> Personal Homework Follow-up</div>
                         </div>
                         <div style="display:flex;gap:12px;flex-wrap:wrap;">
                             <a href="#courses" class="btn btn-primary btn-lg">Browse Courses &rarr;</a>
                             <a href="https://wa.me/201000000000" target="_blank" rel="noopener"
-                                class="btn btn-outline btn-lg">💬 Contact Mr. Islam</a>
+                                class="btn btn-outline btn-lg">💬 Contact Dr. Mohamed</a>
                         </div>
                     </div>
                 </div>
@@ -212,7 +210,7 @@ window.Templates = (function () {
         return `
         <section class="page-section" id="faq-section">
             <div class="container text-center">
-                <span class="section-badge"><span class="icon">❓</span> Help &amp; Info</span>
+                <span class="section-badge sb-cyan"><span class="icon">❓</span> Help &amp; Info</span>
                 <h2 class="section-title">Frequently Asked Questions</h2>
                 <p class="section-subtitle">Everything you need to know about registration, course activation, and using the platform.</p>
                 <div class="faq-grid">
@@ -240,29 +238,10 @@ window.Templates = (function () {
         return `
         <section class="cta-section">
             <div class="container text-center">
-                <h2 class="reveal">Ready to Excel in Biology with Mr. Islam Abdelwahed?</h2>
+                <h2 class="reveal">Ready to Excel in Physics with Dr. Mohamed Abdullah?</h2>
                 <p class="reveal reveal-delay-1">Join thousands of students and experience an engaging learning journey that makes all the difference.</p>
                 <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:var(--space-xl);">
                     ${btnsHTML}
-                </div>
-            </div>
-        </section>
-
-        <section class="instructor-banner-section">
-            <div class="container">
-                <div class="instructor-banner-eyebrow reveal">
-                    <span class="instructor-banner-badge">🧬 هوية المنصة</span>
-                </div>
-                <div class="instructor-banner-card reveal reveal-delay-1">
-                    <svg class="ibs-dna ibs-dna-left" viewBox="0 0 120 400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20,10 C20,60 100,60 100,110 C100,160 20,160 20,210 C20,260 100,260 100,310 C100,360 20,360 20,390" stroke="#22D3EE" stroke-width="3" fill="none" opacity="0.5"/>
-                        <path d="M100,10 C100,60 20,60 20,110 C20,160 100,160 100,210 C100,260 20,260 20,310 C20,360 100,360 100,390" stroke="#6EE7B7" stroke-width="3" fill="none" opacity="0.5"/>
-                    </svg>
-                    <img src="instructor-banner.jpg?v=20260921" alt="الخلية — أ/ إسلام عبدالواحد — معا نحو القمة" class="instructor-banner-img" loading="lazy">
-                    <svg class="ibs-dna ibs-dna-right" viewBox="0 0 120 400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M20,10 C20,60 100,60 100,110 C100,160 20,160 20,210 C20,260 100,260 100,310 C100,360 20,360 20,390" stroke="#6EE7B7" stroke-width="3" fill="none" opacity="0.5"/>
-                        <path d="M100,10 C100,60 20,60 20,110 C20,160 100,160 100,210 C100,260 20,260 20,310 C20,360 100,360 100,390" stroke="#22D3EE" stroke-width="3" fill="none" opacity="0.5"/>
-                    </svg>
                 </div>
             </div>
         </section>`;
@@ -276,15 +255,15 @@ window.Templates = (function () {
                 <div class="auth-visual-mesh"></div>
                 <div class="auth-visual-content">
                     <div class="auth-teacher-badge">
-                        <img src="teacher-new.jpg" alt="Mr. Islam Abdelwahed" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
+                        <img src="teacher-new.jpg?v=20260923" alt="الدكتور محمد عبد الله — عميد الفيزياء" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
                         <div class="auth-t-info">
                             <div class="auth-t-crown">👑</div>
-                            <div class="auth-t-name">Mr. Islam Abdelwahed</div>
-                            <div class="auth-t-sub">Senior Biology Teacher 🔬</div>
+                            <div class="auth-t-name" dir="rtl">الدكتور محمد عبد الله</div>
+                            <div class="auth-t-sub" dir="rtl">عميد الفيزياء ⚛️</div>
                         </div>
                     </div>
-                    <h2 class="auth-visual-title">Welcome Back to Biology Excellence! 🔬</h2>
-                    <p class="auth-visual-desc">Sign in to continue your journey toward the full mark with Mr. Islam Abdelwahed.</p>
+                    <h2 class="auth-visual-title">Welcome Back to Physics Excellence! ⚛️</h2>
+                    <p class="auth-visual-desc">Sign in to continue your journey toward the full mark with Dr. Mohamed Abdullah.</p>
                     <div class="auth-features-list">
                         <div class="auth-feat-item">
                             <span class="auth-feat-icon">📚</span>
@@ -306,7 +285,7 @@ window.Templates = (function () {
                 <div class="auth-form-card">
                     <div class="auth-card-header">
                         <a href="#home" class="auth-logo-badge">
-                            <span class="auth-logo-icon">🔬</span>
+                            <span class="auth-logo-icon">${physicsLogoMark('au', 'auth-logo-svg')}</span>
                             <span class="auth-logo-text">${siteName}</span>
                         </a>
                         <h1 class="auth-heading">Sign In</h1>
@@ -355,7 +334,7 @@ window.Templates = (function () {
 
                         <div class="form-options-row">
                             <label class="remember-label">
-                                <input type="checkbox" checked class="custom-checkbox">
+                                <input type="checkbox" checked class="custom-checkbox" id="loginRemember">
                                 <span>Remember me on this device</span>
                             </label>
                         </div>
@@ -392,14 +371,14 @@ window.Templates = (function () {
                 <div class="auth-visual-mesh"></div>
                 <div class="auth-visual-content">
                     <div class="auth-teacher-badge">
-                        <img src="teacher-new.jpg" alt="Mr. Islam Abdelwahed" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
+                        <img src="teacher-new.jpg?v=20260923" alt="الدكتور محمد عبد الله — عميد الفيزياء" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
                         <div class="auth-t-info">
                             <div class="auth-t-crown">👑</div>
-                            <div class="auth-t-name">Mr. Islam Abdelwahed</div>
-                            <div class="auth-t-sub">Senior Biology Teacher 🔬</div>
+                            <div class="auth-t-name" dir="rtl">الدكتور محمد عبد الله</div>
+                            <div class="auth-t-sub" dir="rtl">عميد الفيزياء ⚛️</div>
                         </div>
                     </div>
-                    <h2 class="auth-visual-title">Join the Biology Achievers! 🎓</h2>
+                    <h2 class="auth-visual-title">Join the Physics Achievers! 🎓</h2>
                     <p class="auth-visual-desc">Create your free account in seconds and get access to exclusive lessons and interactive exams.</p>
                     <div class="auth-features-list">
                         <div class="auth-feat-item">
@@ -422,7 +401,7 @@ window.Templates = (function () {
                 <div class="auth-form-card auth-register-card">
                     <div class="auth-card-header">
                         <a href="#home" class="auth-logo-badge">
-                            <span class="auth-logo-icon">🔬</span>
+                            <span class="auth-logo-icon">${physicsLogoMark('au', 'auth-logo-svg')}</span>
                             <span class="auth-logo-text">${siteName}</span>
                         </a>
                         <h1 class="auth-heading">Create Account</h1>
@@ -599,7 +578,7 @@ window.Templates = (function () {
             <div class="footer-grid">
                 <div class="footer-brand">
                     <div class="footer-logo">
-                        <div class="footer-logo-icon">🧬</div>
+                        <div class="footer-logo-icon">${physicsLogoMark('f', 'footer-logo-svg', 'dark')}</div>
                         <span class="footer-logo-text">${config.fullName}</span>
                     </div>
                     <p>${config.description}</p>

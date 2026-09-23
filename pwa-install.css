@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    pwa-install.css — نافذة تثبيت التطبيق (PWA)
-   منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء
+   منصة الدكتور محمد عبد الله — عميد الفيزياء
    ملف مستقل بألوان ثابتة حتى يظهر بنفس الشكل في index.html وdashboard.html
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -18,7 +18,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(15, 23, 42, 0.55);
+  background: rgba(26, 18, 39, 0.55);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   opacity: 0;
@@ -43,7 +43,7 @@
   background: #ffffff;
   border-radius: 24px 24px 0 0;
   padding: 28px 24px 26px;
-  box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.25);
+  box-shadow: 0 -10px 40px rgba(26, 18, 39, 0.25);
   text-align: center;
   transform: translateY(24px);
   opacity: 0;
@@ -78,8 +78,8 @@
   height: 30px;
   border-radius: 50%;
   border: none;
-  background: #F1F5F9;
-  color: #64748B;
+  background: #F4F2F8;
+  color: #736887;
   font-size: 14px;
   cursor: pointer;
   display: flex;
@@ -87,7 +87,7 @@
   justify-content: center;
   line-height: 1;
 }
-.pwa-install-close:hover { background: #E2E8F0; }
+.pwa-install-close:hover { background: #E8E4EE; }
 
 .pwa-install-icon {
   width: 68px;
@@ -95,20 +95,20 @@
   border-radius: 18px;
   display: block;
   margin: 0 auto 16px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 6px 18px rgba(26, 18, 39, 0.18);
 }
 
 .pwa-install-title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0F172A;
+  color: #1A1227;
   margin: 0 0 10px;
   line-height: 1.4;
 }
 
 .pwa-install-desc {
   font-size: 0.9rem;
-  color: #64748B;
+  color: #736887;
   line-height: 1.75;
   margin: 0 0 20px;
   overflow-wrap: break-word;
@@ -116,8 +116,8 @@
 
 .pwa-install-steps {
   text-align: right;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: #FAF8FC;
+  border: 1px solid #E8E4EE;
   border-radius: 14px;
   padding: 14px 16px;
   margin-bottom: 20px;
@@ -127,7 +127,7 @@
   align-items: flex-start;
   gap: 10px;
   font-size: 0.85rem;
-  color: #1E293B;
+  color: #292138;
   line-height: 1.6;
   padding: 6px 0;
 }
@@ -136,7 +136,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #06B6D4, #0891B2);
+  background: linear-gradient(135deg, #743DD2, #5627A7);
   color: #fff;
   font-size: 0.72rem;
   font-weight: 800;
@@ -161,11 +161,11 @@
   font-weight: 800;
   color: #fff;
   cursor: pointer;
-  background: linear-gradient(135deg, #06B6D4, #0891B2);
-  box-shadow: 0 8px 20px rgba(6, 182, 212, 0.35);
+  background: linear-gradient(135deg, #743DD2, #5627A7);
+  box-shadow: 0 8px 20px rgba(116, 61, 210, 0.35);
   transition: transform .15s ease, box-shadow .15s ease;
 }
-.pwa-install-btn-primary:hover { box-shadow: 0 10px 24px rgba(6, 182, 212, 0.45); }
+.pwa-install-btn-primary:hover { box-shadow: 0 10px 24px rgba(116, 61, 210, 0.45); }
 .pwa-install-btn-primary:active { transform: scale(0.98); }
 .pwa-install-btn-primary:disabled { opacity: 0.7; cursor: default; }
 
@@ -173,31 +173,31 @@
   width: 100%;
   border: none;
   background: transparent;
-  color: #64748B;
+  color: #736887;
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 700;
   padding: 8px;
   cursor: pointer;
 }
-.pwa-install-btn-secondary:hover { color: #334155; }
+.pwa-install-btn-secondary:hover { color: #403751; }
 
 .pwa-install-btn-full {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #F4F2F8;
+  color: #1A1227;
   border-radius: 14px;
   padding: 12px;
 }
 
 [data-theme="dark"] .pwa-install-sheet {
-  background: #111827;
+  background: #1A1325;
 }
-[data-theme="dark"] .pwa-install-title { color: #F1F5F9; }
-[data-theme="dark"] .pwa-install-desc { color: #94A3B8; }
+[data-theme="dark"] .pwa-install-title { color: #F4F2F8; }
+[data-theme="dark"] .pwa-install-desc { color: #A298B4; }
 [data-theme="dark"] .pwa-install-steps {
-  background: #0b1220;
-  border-color: #1e293b;
+  background: #130d1e;
+  border-color: #292138;
 }
-[data-theme="dark"] .pwa-install-step { color: #E2E8F0; }
-[data-theme="dark"] .pwa-install-close { background: #1e293b; color: #94A3B8; }
-[data-theme="dark"] .pwa-install-btn-full { background: #1e293b; color: #F1F5F9; }
+[data-theme="dark"] .pwa-install-step { color: #E8E4EE; }
+[data-theme="dark"] .pwa-install-close { background: #292138; color: #A298B4; }
+[data-theme="dark"] .pwa-install-btn-full { background: #292138; color: #F4F2F8; }

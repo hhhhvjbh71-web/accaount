@@ -6,7 +6,9 @@
       "**/.*",
       "**/node_modules/**",
       "update-version.py",
-      "README-CACHE.md"
+      "README-CACHE.md",
+      "tools/**",
+      "**/*.md"
     ],
     "cleanUrls": false,
     "trailingSlash": false,
@@ -14,53 +16,104 @@
       {
         "source": "/index.html",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-          { "key": "Pragma",        "value": "no-cache" },
-          { "key": "Expires",       "value": "0" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          },
+          {
+            "key": "Pragma",
+            "value": "no-cache"
+          },
+          {
+            "key": "Expires",
+            "value": "0"
+          }
         ]
       },
       {
         "source": "/version.json",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-          { "key": "Pragma",        "value": "no-cache" },
-          { "key": "Expires",       "value": "0" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          },
+          {
+            "key": "Pragma",
+            "value": "no-cache"
+          },
+          {
+            "key": "Expires",
+            "value": "0"
+          }
         ]
       },
       {
         "source": "**/*.@(js|css)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
         ]
       },
       {
         "source": "**/*.@(jpg|jpeg|png|gif|webp|svg|ico)",
         "headers": [
-          { "key": "Cache-Control", "value": "public, max-age=15552000" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=15552000"
+          }
         ]
       },
       {
         "source": "**/*.@(woff|woff2|ttf|eot)",
         "headers": [
-          { "key": "Cache-Control",              "value": "public, max-age=31536000, immutable" },
-          { "key": "Access-Control-Allow-Origin", "value": "*" }
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          }
         ]
       },
       {
         "source": "/sw.js",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-          { "key": "Pragma",        "value": "no-cache" },
-          { "key": "Expires",       "value": "0" },
-          { "key": "Service-Worker-Allowed", "value": "/" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          },
+          {
+            "key": "Pragma",
+            "value": "no-cache"
+          },
+          {
+            "key": "Expires",
+            "value": "0"
+          },
+          {
+            "key": "Service-Worker-Allowed",
+            "value": "/"
+          }
         ]
       },
       {
         "source": "/manifest.json",
         "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
-          { "key": "Pragma",        "value": "no-cache" },
-          { "key": "Expires",       "value": "0" }
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          },
+          {
+            "key": "Pragma",
+            "value": "no-cache"
+          },
+          {
+            "key": "Expires",
+            "value": "0"
+          }
         ]
       }
     ]

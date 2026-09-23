@@ -39,7 +39,8 @@
         phone_taken: 'رقم الهاتف مسجل بالفعل. سجّل الدخول بدلًا من ذلك — This phone number is already registered.',
         weak_password: 'كلمة المرور ضعيفة (6 أحرف/أرقام على الأقل) — Password is too weak (min 6 characters).',
         not_admin: 'هذا الحساب ليس حساب مدرس/أدمن — This account is not an administrator.',
-        unknown: 'حدث خطأ غير متوقع. حاول مرة أخرى — Something went wrong. Please try again.'
+        unknown: 'حدث خطأ غير متوقع. حاول مرة أخرى — Something went wrong. Please try again.',
+        setup: 'الخدمة غير مهيأة بعد. تواصل مع الدعم — Service is not configured yet. Please contact support.'
     };
 
     var state = { user: null, admin: false, verified: false, ready: false, uid: null };
@@ -75,7 +76,11 @@
         if (c === 'auth/weak-password') return AuthError('weak_password');
         if (c === 'auth/email-already-in-use') return AuthError('phone_taken');
         if (e && e.code && MESSAGES[e.code]) return e;
-        return AuthError('unknown', e && e.message);
+        try { console.error('[AuthService] unexpected error:', c, e && e.message); } catch (_) {}
+        var isSetup = /^(auth\/(operation-not-allowed|configuration-not-found|invalid-api-key|api-key-not-valid.*|app-not-authorized|unauthorized-domain)|permission-denied|failed-precondition|not-found|unauthenticated)$/.test(c);
+        var out = AuthError(isSetup ? 'setup' : 'unknown', e && e.message);
+        if (c) out.message += ' [' + c + ']';
+        return out;
     }
     function isNetworkErr(e) {
         var c = (e && e.code) || '';
@@ -117,7 +122,7 @@
         if (!db()) return Promise.reject(AuthError('network'));
         return db().collection('phone_index').doc(phone).get({ source: 'server' }).then(function (snap) {
             return !!snap.exists;
-        }, function (e) { throw isNetworkErr(e) ? AuthError('network') : AuthError('unknown', e && e.message); });
+        }, function (e) { throw isNetworkErr(e) ? AuthError('network') : mapAuthError(e); });
     }
 
     // ── المرحلة 2: هل كلمة المرور صحيحة؟ (Firebase Auth على الخادم) ─────
@@ -242,7 +247,7 @@
             return a.createUserWithEmailAndPassword(phoneToEmail(phone), f.password).then(function (cred) {
                 return createProfileDocs(cred.user, phone, f).then(function () { return cred.user; }, function (e) {
                     // فشلت كتابة الملف بعد إنشاء الحساب: نحاول حذف الحساب اليتيم حتى لا يعلق الرقم
-                    return cred.user.delete().catch(function () {}).then(function () { throw isNetworkErr(e) ? AuthError('network') : AuthError('unknown', e && e.message); });
+                    return cred.user.delete().catch(function () {}).then(function () { throw isNetworkErr(e) ? AuthError('network') : mapAuthError(e); });
                 });
             }, function (e) {
                 if (e && e.code === 'auth/email-already-in-use') {

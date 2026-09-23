@@ -1,18 +1,23 @@
 {
   "id": "/index.html",
-  "name": "الخلية | Mr. Islam Abdelwahed — Biology Platform",
-  "short_name": "الخلية",
-  "description": "The biology platform of Mr. Islam Abdelwahed — courses, lessons, quizzes and homework for preparatory and secondary stages.",
-  "lang": "en",
-  "dir": "ltr",
+  "name": "منصة الدكتور محمد عبد الله — عميد الفيزياء",
+  "short_name": "د. محمد عبد الله",
+  "description": "منصة الدكتور محمد عبد الله — عميد الفيزياء: كورسات ودروس واختبارات وواجبات في الفيزياء للمرحلتين الإعدادية والثانوية.",
+  "lang": "ar",
+  "dir": "rtl",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "any",
-  "background_color": "#F7FCFD",
-  "theme_color": "#06B6D4",
-  "categories": ["education"],
+  "background_color": "#FAF9FC",
+  "theme_color": "#1D1038",
+  "categories": [
+    "education"
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
