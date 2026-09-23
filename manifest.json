@@ -1,0 +1,47 @@
+{
+  "id": "/index.html",
+  "name": "منصة الدكتور محمد عبد الله — عميد الفيزياء",
+  "short_name": "د. محمد عبد الله",
+  "description": "منصة الدكتور محمد عبد الله — عميد الفيزياء: كورسات ودروس واختبارات وواجبات في الفيزياء للمرحلتين الإعدادية والثانوية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#FAF9FC",
+  "theme_color": "#1D1038",
+  "categories": [
+    "education"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

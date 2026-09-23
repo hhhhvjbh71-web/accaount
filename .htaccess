@@ -1,0 +1,106 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  .htaccess — إعدادات Cache محسّنة لمنصة الدكتور محمد عبد الله
+#  الإصدار: 2.0
+# ═══════════════════════════════════════════════════════════════════════
+#
+#  استراتيجية الـ Cache:
+#  ─────────────────────────────────────────────────────────────────────
+#  • index.html      → no-cache (يُجلب دائماً من السيرفر)
+#  • version.json    → no-cache, no-store (لا cache إطلاقاً)
+#  • CSS / JS        → max-age=1 year (يُحدَّث عبر ?v= في الرابط)
+#  • الصور           → max-age=6 months
+#  • الخطوط          → max-age=1 year
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── Expires Headers ────────────────────────────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    # HTML → لا cache (يُراجَع دائماً)
+    ExpiresByType text/html              "access plus 0 seconds"
+    ExpiresByType application/xhtml+xml  "access plus 0 seconds"
+
+    # JSON → لا cache (خاصةً version.json)
+    ExpiresByType application/json       "access plus 0 seconds"
+    ExpiresByType text/json              "access plus 0 seconds"
+
+    # CSS و JavaScript → cache طويل (يُحدَّث بـ ?v=)
+    ExpiresByType text/css               "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript        "access plus 1 year"
+
+    # الصور → 6 أشهر
+    ExpiresByType image/jpeg             "access plus 6 months"
+    ExpiresByType image/png              "access plus 6 months"
+    ExpiresByType image/gif              "access plus 6 months"
+    ExpiresByType image/webp             "access plus 6 months"
+    ExpiresByType image/svg+xml          "access plus 6 months"
+    ExpiresByType image/x-icon           "access plus 1 year"
+
+    # الخطوط → سنة
+    ExpiresByType font/woff              "access plus 1 year"
+    ExpiresByType font/woff2             "access plus 1 year"
+    ExpiresByType application/font-woff  "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+</IfModule>
+
+# ── Cache-Control Headers ──────────────────────────────────────────────
+<IfModule mod_headers.c>
+
+    # ── index.html و أي HTML → تحقّق دائماً من السيرفر ──────────────
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, must-revalidate"
+        Header set Pragma "no-cache"
+        Header unset ETag
+    </FilesMatch>
+
+    # ── version.json → لا cache إطلاقاً ──────────────────────────────
+    <FilesMatch "^version\.json$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+        Header unset ETag
+    </FilesMatch>
+
+    # ── CSS و JS → cache سنة كاملة (مع ?v= في الرابط) ───────────────
+    # ملاحظة: ?v= في الرابط يجعل المتصفح يعتبره ملفاً مختلفاً
+    <FilesMatch "\.(css|js)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # ── الصور → cache 6 أشهر ─────────────────────────────────────────
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=15552000"
+    </FilesMatch>
+
+    # ── الخطوط → cache سنة ───────────────────────────────────────────
+    <FilesMatch "\.(woff|woff2|ttf|eot|otf)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    # ── إضافة CORS للخطوط ────────────────────────────────────────────
+    <FilesMatch "\.(woff|woff2|ttf|eot|otf)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+
+</IfModule>
+
+# ── إيقاف ETag (Last-Modified أكثر موثوقية) ──────────────────────────
+FileETag None
+<IfModule mod_headers.c>
+    Header unset ETag
+</IfModule>
+
+# ── GZIP Compression ──────────────────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE font/woff
+    AddOutputFilterByType DEFLATE font/woff2
+</IfModule>
+
+# ── Charset ───────────────────────────────────────────────────────────
+AddDefaultCharset UTF-8
