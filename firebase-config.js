@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════
 //  firebase-config.js — إعداد Firebase وتهيئة window.db
-//  منصة الدكتور محمد عبد الله — عميد الفيزياء
-//  Project: mohamed-abdallah-bff4a
+//  منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء
+//  Project: mahmoud-abdeldaem-manassa
 // ═══════════════════════════════════════════════════════════════════════
 //  هذا الملف يُحمَّل مرة واحدة في <head> قبل أي script آخر يعتمد على Firebase.
 //  يُعرِّف window.db (Firestore) و window.firebase لاستخدامها في الداشبورد.
@@ -12,13 +12,13 @@
 
     // ── إعدادات مشروع Firebase الرسمي ──────────────────────────────────
     var firebaseConfig = {
-        apiKey:            "AIzaSyC1EpL1RRBZvEo6b2j8mkOV-H0Tln5y7jA",
-        authDomain:        "mohamed-abdallah-bff4a.firebaseapp.com",
-        projectId:         "mohamed-abdallah-bff4a",
-        storageBucket:     "mohamed-abdallah-bff4a.firebasestorage.app",
-        messagingSenderId: "1022413740065",
-        appId:             "1:1022413740065:web:7c824f97629c4a9fa5eb60",
-        measurementId:     "G-8B8QP38G6L"
+        apiKey:            "AIzaSyA-tRgZrEPCi-1Bdx6NoDJYOPorzn5Ep-8",
+        authDomain:        "mahmoud-abdeldaem-manassa.firebaseapp.com",
+        projectId:         "mahmoud-abdeldaem-manassa",
+        storageBucket:     "mahmoud-abdeldaem-manassa.firebasestorage.app",
+        messagingSenderId: "53298877358",
+        appId:             "1:53298877358:web:7fe6de4a69162c057eae3f",
+        measurementId:     "G-HV2S70S3YW"
     };
 
     // ── تهيئة Firebase مرة واحدة فقط ──────────────────────────────────
@@ -51,7 +51,7 @@
                 });
             } catch(e) {}
 
-            console.log('🔥 [firebase-config] ✅ Firebase جاهز — project: mohamed-abdallah-bff4a | db:', !!window.db);
+            console.log('🔥 [firebase-config] ✅ Firebase جاهز — project: mahmoud-abdeldaem-manassa | db:', !!window.db);
 
             // ── جلب الكورسات فوراً لأي زائر (بدون شرط تسجيل دخول) ──────────
             // هذا يضمن ظهور الكورسات في الصفحة الرئيسية حتى في Incognito

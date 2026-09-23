@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════
 //  firebase-service.js — خدمة الربط بقاعدة بيانات Google Firebase
-//  منصة الدكتور محمد عبد الله — عميد الفيزياء
-//  Project: mohamed-abdallah-bff4a
+//  منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء
+//  Project: mahmoud-abdeldaem-manassa
 // ═══════════════════════════════════════════════════════════════════════
 
 (function (global) {
@@ -9,13 +9,13 @@
 
     // ── إعدادات Firebase الخاصة بالمشروع ──────────────────────────────
     const firebaseConfig = {
-        apiKey: "AIzaSyC1EpL1RRBZvEo6b2j8mkOV-H0Tln5y7jA",
-        authDomain: "mohamed-abdallah-bff4a.firebaseapp.com",
-        projectId: "mohamed-abdallah-bff4a",
-        storageBucket: "mohamed-abdallah-bff4a.firebasestorage.app",
-        messagingSenderId: "1022413740065",
-        appId: "1:1022413740065:web:7c824f97629c4a9fa5eb60",
-        measurementId: "G-8B8QP38G6L"
+        apiKey: "AIzaSyA-tRgZrEPCi-1Bdx6NoDJYOPorzn5Ep-8",
+        authDomain: "mahmoud-abdeldaem-manassa.firebaseapp.com",
+        projectId: "mahmoud-abdeldaem-manassa",
+        storageBucket: "mahmoud-abdeldaem-manassa.firebasestorage.app",
+        messagingSenderId: "53298877358",
+        appId: "1:53298877358:web:7fe6de4a69162c057eae3f",
+        measurementId: "G-HV2S70S3YW"
     };
 
     let firebaseApp = null;
@@ -55,7 +55,7 @@
             window.firebase = firebase;
             firebaseAuth = firebase.auth ? firebase.auth() : null;
             isInitialized = true;
-            console.log('🔥 [Firebase] Connected successfully to project: mohamed-abdallah-bff4a');
+            console.log('🔥 [Firebase] Connected successfully to project: mahmoud-abdeldaem-manassa');
 
             // بدء المزامنة الحية للبيانات
             startRealtimeSync();
@@ -82,15 +82,13 @@
 
     // ── 1. مزامنة المستخدمين (Users) ──────────────────────────────────
     async function syncUsersFromFirestore() {
-        // لم تعد المنصة تنزّل حسابات كل المستخدمين إلى أي متصفح (كانت تشمل كلمات المرور).
-        // الأدمن فقط (بعد التحقق) يستطيع ذلك، ولا تُنسخ كلمات المرور أبداً.
-        if (!firestoreDb || !window.AuthService || !window.AuthService.isAdmin()) return;
+        if (!firestoreDb) return;
         try {
             const snapshot = await firestoreDb.collection(COL_USERS).get();
             if (!snapshot.empty) {
                 const cloudUsers = [];
                 snapshot.forEach(doc => {
-                    var cu = Object.assign({ id: doc.id }, doc.data()); delete cu.password; cloudUsers.push(cu);
+                    cloudUsers.push(Object.assign({ id: doc.id }, doc.data()));
                 });
                 
                 // دمج مع المستخدمين المحليين
@@ -110,7 +108,6 @@
 
     async function saveUserToFirestore(user) {
         if (!user || !user.id) return;
-        user = Object.assign({}, user); delete user.password; delete user.role;   // لا كلمات مرور ولا صلاحيات من العميل
         if (firestoreDb) {
             try {
                 await firestoreDb.collection(COL_USERS).doc(String(user.id)).set(user, { merge: true });
@@ -305,7 +302,7 @@
         }
 
         // تشغيل المزامنة المبدئية — ترتيب الأولويات مهم
-        // syncUsersFromFirestore() — أُوقفت: لا تنزيل جماعي للمستخدمين إلى المتصفح
+        syncUsersFromFirestore();
         syncCodesFromFirestore();
         // مزامنة الكورسات والدروس والمحتوى (مهم لعرض الفيديوهات من Firebase)
         syncCoursesFromFirestore().then(function() {

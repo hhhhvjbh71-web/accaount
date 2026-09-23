@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-// منصة الدكتور محمد عبد الله — عميد الفيزياء — Main Application
+// منصة الخلية — أ/ إسلام عبدالواحد — Main Application
 // SPA Router, Page Renderers, Components, Interactions
 // Session: localStorage key = 'iraqiplatform_current_user'
 // ═══════════════════════════════════════════════════════════════
@@ -14,22 +14,132 @@
     let mobileMenuOpen = false;
     let lessonSidebarOpen = false;
 
-    // ── Auth state ───────────────────────────────────────────────
-    // مصدر الحقيقة الوحيد لتسجيل الدخول: AuthService (Firebase Authentication + قاعدة البيانات).
-    // localStorage لم يعد يُعتمد عليه في أي قرار دخول؛ currentUser/isLoggedIn تُملأ فقط
-    // من AuthService بعد التحقق من رقم الهاتف وكلمة المرور من الخادم.
+    // ── Admin Helper ─────────────────────────────────────────────
     function isAdmin() {
-        return isLoggedIn && !!currentUser && !!window.AuthService && window.AuthService.isAdmin();
+        return isLoggedIn && currentUser && currentUser.email === ADMIN_EMAIL;
     }
-    function applyAuthUser(user) {
-        currentUser = user || null;
-        isLoggedIn = !!user;
-    }
+
+    // ── Session Persistence ──────────────────────────────────────
+    const SESSION_KEY = 'iraqiplatform_current_user';
+
     function loadSession() {
-        applyAuthUser(window.AuthService ? window.AuthService.getCurrentUser() : null);
+        try {
+            const raw = localStorage.getItem(SESSION_KEY);
+            if (raw) {
+                const user = JSON.parse(raw);
+                if (user && user.id && (user.name || user.phone)) {
+                    currentUser = user;
+                    isLoggedIn = true;
+                }
+            }
+        } catch (e) { /* ignore corrupt data */ }
     }
-    function saveSession(user) { applyAuthUser(user); }      // ذاكرة فقط — الحفظ الدائم تتولاه AuthService
-    function clearSession() { applyAuthUser(null); }
+
+    function saveSession(user) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+        currentUser = user;
+        isLoggedIn = true;
+        // فور تسجيل الدخول: تأكد من مزامنة محاولات الاختبار الخاصة بيه
+        // من Firebase فورًا (مش بس عن طريق إعادة المحاولة التلقائية)
+        try {
+            if (window.IRAQI_BRIDGE && typeof window.IRAQI_BRIDGE.syncAttempts === 'function') {
+                window.IRAQI_BRIDGE.syncAttempts();
+            }
+        } catch (e) {}
+    }
+
+    function clearSession() {
+        localStorage.removeItem(SESSION_KEY);
+        currentUser = null;
+        isLoggedIn = false;
+    }
+
+    // ── Users DB ─────────────────────────────────────────────────
+    const USERS_KEY = 'iraqiplatform_users';
+
+    function getUsers() {
+        try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; }
+        catch (e) { return []; }
+    }
+
+    function saveUsers(users) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+        if (typeof window.FirebaseService !== 'undefined' && window.FirebaseService.users) {
+            try { (users || []).forEach(u => window.FirebaseService.users.save(u)); } catch (e) { }
+        }
+    }
+
+    function findUser(emailOrPhone) {
+        return getUsers().find(u =>
+            u.email === emailOrPhone || u.phone === emailOrPhone
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // AUTHENTICATION — 4 خطوات منفصلة تمامًا عن بعض، كل واحدة مسؤولة
+    // عن حاجة واحدة بس (بدل ما يكونوا مخلوطين جوه handleLogin القديمة):
+    //   1) findAccountByPhone   → هل الحساب موجود؟ (Firestore هو المرجع)
+    //   2) verifyAccountPassword → هل كلمة المرور صح؟
+    //   3) saveSession           → إنشاء جلسة الدخول (موجودة فوق)
+    //   4) loadSession           → استعادة الجلسة + تأكيد صلاحيتها (فوق)
+    // ═══════════════════════════════════════════════════════════════
+
+    // 1) البحث عن حساب برقم الهاتف — قاعدة البيانات (Firestore) هي
+    //    المصدر الأساسي والموثوق دايمًا، مش بس Fallback لما الكاش يكون
+    //    فاضي. الكاش المحلي بيتحدّث بعد كل بحث ناجح كتحسين أداء فقط،
+    //    وبيُستخدم هو نفسه كحل احتياطي وحيد لو Firebase كان غير متاح
+    //    فعليًا (مثلاً الطالب أوفلاين).
+    async function findAccountByPhone(phone) {
+        if (window.db) {
+            try {
+                const snap = await window.db.collection('users').where('phone', '==', phone).limit(1).get();
+                if (!snap.empty) {
+                    const remote = Object.assign({ id: snap.docs[0].id }, snap.docs[0].data());
+                    try {
+                        const localUsers = getUsers();
+                        const idx = localUsers.findIndex(u => String(u.id) === String(remote.id));
+                        if (idx >= 0) localUsers[idx] = Object.assign({}, localUsers[idx], remote);
+                        else localUsers.push(remote);
+                        localStorage.setItem(USERS_KEY, JSON.stringify(localUsers));
+                    } catch (e) { /* تحديث الكاش تحسين ثانوي فقط — تجاهل أي خطأ فيه */ }
+                    return remote;
+                }
+                return null; // Firestore أكّد: الرقم غير مسجّل فعليًا
+            } catch (e) {
+                console.warn('[Auth] تعذّر الوصول لقاعدة البيانات، استخدام النسخة المحلية كحل احتياطي:', e.message);
+                // نكمل تحت للـ fallback المحلي بدل ما نمنع تسجيل الدخول بالكامل بسبب مشكلة شبكة مؤقتة
+            }
+        }
+        // Fallback فقط عند تعذّر الوصول الفعلي لقاعدة البيانات (أوفلاين مثلاً)
+        return getUsers().find(u => (u.phone || '').replace(/[^0-9]/g, '') === phone) || null;
+    }
+
+    // 2) التحقق من كلمة المرور — منفصل تمامًا عن التحقق من وجود الحساب
+    function verifyAccountPassword(account, password) {
+        return !!(account && account.password === password);
+    }
+
+    // 4) تأكيد صلاحية الجلسة المستعادة في الخلفية — بدون تعطيل عرض
+    //    الواجهة فورًا (تفاديًا لأي Flash)، لكن لو تبيّن إن الحساب
+    //    اتحذف فعليًا من قاعدة البيانات، يتم إنهاء الجلسة تلقائيًا
+    //    بدل ما يفضل المستخدم "مسجّل دخول" ببيانات وهمية/قديمة.
+    function verifySessionInBackground() {
+        if (!isLoggedIn || !currentUser || !currentUser.id || !window.db) return;
+        window.db.collection('users').doc(String(currentUser.id)).get().then(function (doc) {
+            if (!doc.exists) {
+                console.warn('[Auth] الحساب المحفوظ محليًا لم يعد موجودًا في قاعدة البيانات — سيتم إنهاء الجلسة.');
+                clearSession();
+                if (typeof window.handleRoute === 'function') window.handleRoute();
+                return;
+            }
+            // حدّث بيانات الجلسة بأحدث نسخة من قاعدة البيانات (نفس المعرف نفسه، بيانات محدّثة فقط)
+            var fresh = Object.assign({ id: doc.id }, doc.data());
+            currentUser = Object.assign({}, currentUser, fresh);
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser)); } catch (e) {}
+        }).catch(function (e) {
+            console.warn('[Auth] تعذّر تأكيد صلاحية الجلسة (سيتم الاعتماد على النسخة المحلية مؤقتًا):', e.message);
+        });
+    }
 
     // ── Password Validation (min 6 chars, English letters or digits) ─
     function validatePassword(pw) {
@@ -92,14 +202,14 @@
         var ytId = m ? m[1] : '';
         container.innerHTML =
             '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;' +
-            'background:linear-gradient(135deg,#0f0f0f,#221c2c);border-radius:14px;padding:32px;text-align:center;gap:16px;">' +
+            'background:linear-gradient(135deg,#0f0f0f,#1a1a2e);border-radius:14px;padding:32px;text-align:center;gap:16px;">' +
             '<div style="font-size:3rem;">&#127910;</div>' +
             '<h3 style="color:#fff;margin:0;font-size:1.1rem;font-weight:800;">الفيديو غير متاح للتضمين</h3>' +
             '<p style="color:rgba(255,255,255,0.5);margin:0;font-size:0.85rem;max-width:320px;line-height:1.6;">' +
             'تأكد من تفعيل خاصية التضمين من إعدادات الفيديو في YouTube Studio.</p>' +
             '<div style="background:rgba(255,255,255,0.07);border-radius:12px;padding:14px 20px;font-size:0.82rem;' +
             'color:rgba(255,255,255,0.65);max-width:360px;text-align:right;direction:rtl;line-height:2;">' +
-            '<strong style="color:#A054C6;">&#128272; للمدرس/المسؤول:</strong><br>' +
+            '<strong style="color:#10B981;">&#128272; للمدرس/المسؤول:</strong><br>' +
             '&#9312; افتح YouTube Studio<br>' +
             '&#9313; اختر الفيديو &larr; Edit<br>' +
             '&#9314; More Options &larr; فعّل <strong>Allow embedding &#9989;</strong><br>' +
@@ -220,7 +330,35 @@
             <div class="container">
                 <a href="#home" class="header-logo">
                     <div class="header-logo-icon">
-                        ${physicsLogoMark('h', 'header-logo-svg')}
+                        <svg class="header-logo-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="bioLogoCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#67E8F9"/>
+                                    <stop offset="50%" stop-color="#06B6D4"/>
+                                    <stop offset="100%" stop-color="#0E7490"/>
+                                </linearGradient>
+                                <linearGradient id="bioLogoTeal" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#6EE7B7"/>
+                                    <stop offset="50%" stop-color="#10B981"/>
+                                    <stop offset="100%" stop-color="#065F46"/>
+                                </linearGradient>
+                                <filter id="bioLogoGlow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#06B6D4" flood-opacity="0.35"/>
+                                </filter>
+                            </defs>
+                            <!-- DNA double helix -->
+                            <path d="M14,6 C14,16 34,16 34,24 C34,32 14,32 14,42" stroke="url(#bioLogoCyan)" stroke-width="2.6" stroke-linecap="round" fill="none" filter="url(#bioLogoGlow)"/>
+                            <path d="M34,6 C34,16 14,16 14,24 C14,32 34,32 34,42" stroke="url(#bioLogoTeal)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+                            <line x1="14" y1="6" x2="34" y2="6" stroke="url(#bioLogoCyan)" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+                            <line x1="34" y1="24" x2="14" y2="24" stroke="url(#bioLogoTeal)" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+                            <line x1="14" y1="42" x2="34" y2="42" stroke="url(#bioLogoCyan)" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+                            <circle cx="14" cy="6" r="2.3" fill="url(#bioLogoCyan)"/>
+                            <circle cx="34" cy="6" r="2.3" fill="url(#bioLogoTeal)" filter="url(#bioLogoGlow)"/>
+                            <circle cx="34" cy="24" r="2.3" fill="url(#bioLogoCyan)"/>
+                            <circle cx="14" cy="24" r="2.3" fill="url(#bioLogoTeal)"/>
+                            <circle cx="14" cy="42" r="2.3" fill="url(#bioLogoCyan)"/>
+                            <circle cx="34" cy="42" r="2.3" fill="url(#bioLogoTeal)"/>
+                        </svg>
                     </div>
                     <div>
                         <div class="header-logo-text">${SITE_CONFIG.name}</div>
@@ -284,7 +422,19 @@
             <div class="mobile-menu-header">
                 <a href="#home" class="header-logo" onclick="closeMobileMenu()">
                     <div class="header-logo-icon">
-                        ${physicsLogoMark('hm', 'header-logo-svg')}
+                        <svg class="header-logo-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14,6 C14,16 34,16 34,24 C34,32 14,32 14,42" stroke="#06B6D4" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+                            <path d="M34,6 C34,16 14,16 14,24 C14,32 34,32 34,42" stroke="#10B981" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+                            <line x1="14" y1="6" x2="34" y2="6" stroke="#06B6D4" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+                            <line x1="34" y1="24" x2="14" y2="24" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+                            <line x1="14" y1="42" x2="34" y2="42" stroke="#06B6D4" stroke-width="1.8" stroke-linecap="round" opacity="0.85"/>
+                            <circle cx="14" cy="6" r="2.3" fill="#06B6D4"/>
+                            <circle cx="34" cy="6" r="2.3" fill="#10B981"/>
+                            <circle cx="34" cy="24" r="2.3" fill="#06B6D4"/>
+                            <circle cx="14" cy="24" r="2.3" fill="#10B981"/>
+                            <circle cx="14" cy="42" r="2.3" fill="#06B6D4"/>
+                            <circle cx="34" cy="42" r="2.3" fill="#10B981"/>
+                        </svg>
                     </div>
                     <div>
                         <div class="header-logo-text">${SITE_CONFIG.name}</div>
@@ -335,7 +485,7 @@
             <div class="footer-grid">
                 <div class="footer-brand">
                     <div class="footer-logo">
-                        <div class="footer-logo-icon">${physicsLogoMark('f', 'footer-logo-svg', 'dark')}</div>
+                        <div class="footer-logo-icon">🧬</div>
                         <span class="footer-logo-text">${SITE_CONFIG.fullName}</span>
                     </div>
                     <p>${SITE_CONFIG.description}</p>
@@ -426,23 +576,35 @@
             <div class="hb-bg" aria-hidden="true">
                 <div class="hb-orb hb-orb-1"></div>
                 <div class="hb-orb hb-orb-2"></div>
-                <span class="hb-float hb-f1">F = ma</span>
-                <span class="hb-float hb-f2">E = mc²</span>
-                <span class="hb-float hb-f3">V = IR</span>
-                <span class="hb-float hb-f4">λ = v / f</span>
-                <span class="hb-float hb-f5">ΔE = hf</span>
-                <span class="hb-float hb-f6">∑F = 0</span>
+                <span class="hb-float hb-f1">🧬 DNA</span>
+                <span class="hb-float hb-f2">RNA</span>
+                <span class="hb-float hb-f3">O₂ ⇌ CO₂</span>
+                <span class="hb-float hb-f4">🔬 Cell</span>
+                <span class="hb-float hb-f5">ATP</span>
+                <span class="hb-float hb-f6">Mitosis</span>
             </div>
 
             <div class="hb-container">
                 <div class="hb-body">
-                    <div class="hb-text-side">
+
+                    <!-- Photo Side -->
+                    <div class="hb-img-side">
                         <h1 class="hb-heading">
-                            <span class="hb-h-prefix">Physics with</span>
-                            <span class="hb-h-name" dir="rtl">الدكتور محمد عبد الله</span>
-                            <span class="hb-h-suffix" dir="rtl">عميد الفيزياء</span>
-                            <span class="hb-h-levels">Secondary &amp; Preparatory</span>
+                            <span class="hb-h-prefix">Biology with</span>
+                            <span class="hb-h-name">Mr. Islam Abdelwahed</span>
+                            <span class="hb-h-suffix">Secondary &amp; Preparatory</span>
                         </h1>
+                        <div class="hb-img-frame">
+                            <div class="hb-img-glow" aria-hidden="true"></div>
+                            <img src="teacher-new.jpg?v=20260912" alt="Mr. Islam Abdelwahed" class="hb-img" loading="eager" onerror="this.src='صورة المدرس الجديد.jpeg'">
+                            <div class="hb-img-caption">
+                                <span class="hb-img-badge">🧬 Biology Teacher</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الأزرار — يمين -->
+                    <div class="hb-text-side">
                         <div class="hb-btns">
                             <a href="#register" class="hb-btn-orange">
                                 <span>✨ Create Account Now</span>
@@ -454,12 +616,6 @@
                         </div>
                     </div>
 
-                    <div class="hb-img-side">
-                        <div class="hb-img-frame">
-                            <img src="teacher-hero.webp?v=20260923" alt="الدكتور محمد عبد الله — عميد الفيزياء" class="hb-img" width="738" height="922" loading="eager" decoding="async" fetchpriority="high" onload="this.parentNode.classList.add('is-loaded')" onerror="if(this.dataset.fb){this.parentNode.classList.add('is-loaded')}else{this.dataset.fb=1;this.classList.add('is-fb');this.src='hero-teacher.jpg?v=20260923'}">
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </section>
@@ -468,7 +624,7 @@
         <section class="page-section home-courses-section" id="courses-section">
             <div class="container">
                 <div class="home-courses-header">
-                    <span class="section-badge sb-blue"><span class="icon">📚</span> Available Courses</span>
+                    <span class="section-badge"><span class="icon">📚</span> Available Courses</span>
                     <h2 class="section-title">Platform Courses</h2>
 
                     <!-- Search & Filters -->
@@ -505,7 +661,7 @@
         <!-- Features / Why Choose Us -->
         <section class="page-section" id="features-section">
             <div class="container text-center">
-                <span class="section-badge sb-violet"><span class="icon">✨</span> Why Dr. Mohamed Abdullah?</span>
+                <span class="section-badge"><span class="icon">✨</span> Why Mr. Islam Abdelwahed?</span>
                 <h2 class="section-title">Everything You Need for Full Marks &amp; Excellence</h2>
                 <p class="section-subtitle">A comprehensive learning environment tailored to help you excel with maximum efficiency.</p>
                 <div class="features-grid">
@@ -523,7 +679,7 @@
         <!-- 3-Step Roadmap -->
         <section class="page-section" style="background:var(--bg-alt);">
             <div class="container text-center">
-                <span class="section-badge sb-teal"><span class="icon">🚀</span> Easy Start</span>
+                <span class="section-badge"><span class="icon">🚀</span> Easy Start</span>
                 <h2 class="section-title">How to Start Your Journey in 3 Steps</h2>
                 <p class="section-subtitle">Simple and fast steps to get started in just a few minutes.</p>
                 <div class="steps-grid">
@@ -556,23 +712,23 @@
                     <div class="teacher-visual">
                         <div class="teacher-avatar-circle">👨‍🏫</div>
                         <div class="teacher-name-badge">${SITE_CONFIG.teacher}</div>
-                        <div class="teacher-role-badge">عميد الفيزياء — Secondary &amp; Preparatory</div>
+                        <div class="teacher-role-badge">Biology Expert &amp; Teacher for Secondary &amp; Preparatory</div>
                     </div>
                     <div class="teacher-content">
-                        <span class="section-badge sb-volt"><span class="icon">⭐</span> Lead Instructor</span>
-                        <h2>Making Physics Clear, Intuitive &amp; Inspiring</h2>
+                        <span class="section-badge"><span class="icon">⭐</span> Lead Instructor</span>
+                        <h2>Making Biology Clear, Intuitive &amp; Inspiring</h2>
                         <p>
-                            "My core mission is not merely to teach formulas, but to build a scientific mindset that understands where the laws come from and how to apply them to solve the hardest problems with confidence. Over 15+ years, I have proudly guided thousands of students to top faculties and full marks."
+                            "My core mission is not merely to help students memorize, but to build a true biological mindset that understands how living systems work and connects every concept to real life. Over 15+ years, I have proudly guided thousands of students to top faculties and full marks."
                         </p>
                         <div class="teacher-pills">
                             <div class="teacher-pill"><span>🏆</span> 15+ Years Experience</div>
                             <div class="teacher-pill"><span>🎯</span> Top Nationwide Ranks</div>
-                            <div class="teacher-pill"><span>⚛️</span> Exclusive Simplified Method</div>
+                            <div class="teacher-pill"><span>🔬</span> Exclusive Simplified Method</div>
                             <div class="teacher-pill"><span>⚡</span> Personal Homework Follow-up</div>
                         </div>
                         <div style="display:flex;gap:12px;flex-wrap:wrap;">
                             <a href="#courses" class="btn btn-primary btn-lg">Browse Courses &rarr;</a>
-                            <a href="https://wa.me/201000000000" target="_blank" rel="noopener" class="btn btn-outline btn-lg">💬 Contact Dr. Mohamed</a>
+                            <a href="https://wa.me/201000000000" target="_blank" rel="noopener" class="btn btn-outline btn-lg">💬 Contact Mr. Islam</a>
                         </div>
                     </div>
                 </div>
@@ -582,9 +738,9 @@
         <!-- Testimonials Section -->
         <section class="page-section" style="background:var(--bg-alt);">
             <div class="container text-center">
-                <span class="section-badge sb-magenta"><span class="icon">💬</span> Student Reviews</span>
+                <span class="section-badge"><span class="icon">💬</span> Student Reviews</span>
                 <h2 class="section-title">What Our Students &amp; Parents Say</h2>
-                <p class="section-subtitle">Real success stories of students who turned Physics into their greatest strength.</p>
+                <p class="section-subtitle">Real success stories of students who turned Biology into their greatest strength.</p>
                 <div class="testimonials-grid">
                     ${TESTIMONIALS_DATA.map((t, i) => `
                         <div class="testimonial-card reveal reveal-delay-${(i % 3) + 1}">
@@ -606,7 +762,7 @@
         <!-- FAQ Section -->
         <section class="page-section" id="faq-section">
             <div class="container text-center">
-                <span class="section-badge sb-cyan"><span class="icon">❓</span> Help &amp; Info</span>
+                <span class="section-badge"><span class="icon">❓</span> Help &amp; Info</span>
                 <h2 class="section-title">Frequently Asked Questions</h2>
                 <p class="section-subtitle">Everything you need to know about registration, course activation, and using the platform.</p>
                 <div class="faq-grid">
@@ -628,7 +784,7 @@
         <!-- Final CTA Banner -->
         <section class="cta-section">
             <div class="container text-center">
-                <h2 class="reveal">Ready to Excel in Physics with Dr. Mohamed Abdullah?</h2>
+                <h2 class="reveal">Ready to Excel in Biology with Mr. Islam Abdelwahed?</h2>
                 <p class="reveal reveal-delay-1">Join thousands of students and experience an engaging learning journey that makes all the difference.</p>
                 <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:var(--space-xl);">
                     ${isLoggedIn ? `
@@ -638,6 +794,26 @@
                         <a href="#register" class="btn btn-accent btn-xl reveal reveal-delay-2" id="ctaBannerRegisterBtn">✨ Create Free Account Now &rarr;</a>
                         <a href="#login" class="btn btn-outline btn-xl reveal reveal-delay-2" style="border-color:#fff;color:#fff;">🔑 Sign In</a>
                     `}
+                </div>
+            </div>
+        </section>
+
+        <!-- Instructor Signature Banner -->
+        <section class="instructor-banner-section">
+            <div class="container">
+                <div class="instructor-banner-eyebrow reveal">
+                    <span class="instructor-banner-badge">🧬 هوية المنصة</span>
+                </div>
+                <div class="instructor-banner-card reveal reveal-delay-1">
+                    <svg class="ibs-dna ibs-dna-left" viewBox="0 0 120 400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20,10 C20,60 100,60 100,110 C100,160 20,160 20,210 C20,260 100,260 100,310 C100,360 20,360 20,390" stroke="#22D3EE" stroke-width="3" fill="none" opacity="0.5"/>
+                        <path d="M100,10 C100,60 20,60 20,110 C20,160 100,160 100,210 C100,260 20,260 20,310 C20,360 100,360 100,390" stroke="#6EE7B7" stroke-width="3" fill="none" opacity="0.5"/>
+                    </svg>
+                    <img src="instructor-banner.jpg?v=20260921" alt="الخلية — أ/ إسلام عبدالواحد — معا نحو القمة" class="instructor-banner-img" loading="lazy">
+                    <svg class="ibs-dna ibs-dna-right" viewBox="0 0 120 400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20,10 C20,60 100,60 100,110 C100,160 20,160 20,210 C20,260 100,260 100,310 C100,360 20,360 20,390" stroke="#6EE7B7" stroke-width="3" fill="none" opacity="0.5"/>
+                        <path d="M100,10 C100,60 20,60 20,110 C20,160 100,160 100,210 C100,260 20,260 20,310 C20,360 100,360 100,390" stroke="#22D3EE" stroke-width="3" fill="none" opacity="0.5"/>
+                    </svg>
                 </div>
             </div>
         </section>
@@ -663,7 +839,7 @@
         <div style="padding-top:calc(var(--header-height) + var(--space-2xl));padding-bottom:var(--space-3xl);">
             <div class="container">
                 <div class="text-center" style="margin-bottom:var(--space-2xl);">
-                    <span class="section-badge sb-blue"><span class="icon">📚</span> Courses</span>
+                    <span class="section-badge"><span class="icon">📚</span> Courses</span>
                     <h2 class="section-title">All Available Courses</h2>
                     <p class="section-subtitle">Choose your grade level and explore courses available for you.</p>
                 </div>
@@ -925,7 +1101,7 @@
                         <p style="line-height:2;margin-bottom:var(--space-lg);">${course.description}</p>
                         <h4 style="margin-bottom:var(--space-md);">What You Will Learn</h4>
                         <ul style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                            <li style="display:flex;align-items:center;gap:8px;font-size:0.92rem;">✅ Understand core physical concepts</li>
+                            <li style="display:flex;align-items:center;gap:8px;font-size:0.92rem;">✅ Understand core biological concepts</li>
                             <li style="display:flex;align-items:center;gap:8px;font-size:0.92rem;">✅ Systematic problem-solving techniques</li>
                             <li style="display:flex;align-items:center;gap:8px;font-size:0.92rem;">✅ Real exam practice &amp; timed tests</li>
                             <li style="display:flex;align-items:center;gap:8px;font-size:0.92rem;">✅ Comprehensive final term revision</li>
@@ -1011,7 +1187,7 @@
 
                         <h1 style="font-size:2.1rem; font-weight:900; color:var(--text-primary); margin-bottom:14px; line-height:1.3;">${course.title}</h1>
 
-                        <div style="background:var(--bg-alt); padding:16px 20px; border-radius:14px; border-left:4px solid var(--primary-500, #743DD2); margin-bottom:22px;">
+                        <div style="background:var(--bg-alt); padding:16px 20px; border-radius:14px; border-left:4px solid var(--primary-500, #06B6D4); margin-bottom:22px;">
                             <p style="color:var(--text-secondary); font-size:1rem; line-height:1.85; margin:0; text-align:justify;">${course.description}</p>
                         </div>
 
@@ -1158,8 +1334,8 @@
                                                 ${lesson.isCompleted
                         ? '<span class="badge badge-success" style="font-size:0.75rem;">✓ Completed</span>'
                         : canAccess
-                            ? '<span class="badge" style="font-size:0.75rem;background:rgba(116,62,210,0.1);color:#743ed2;border:1px solid rgba(116,62,210,0.2);">Available</span>'
-                            : '<span class="badge" style="font-size:0.75rem;background:rgba(115,104,135,0.1);color:#736887;border:1px solid rgba(115,104,135,0.2);">🔒 Locked</span>'}
+                            ? '<span class="badge" style="font-size:0.75rem;background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.2);">Available</span>'
+                            : '<span class="badge" style="font-size:0.75rem;background:rgba(100,116,139,0.1);color:#64748b;border:1px solid rgba(100,116,139,0.2);">🔒 Locked</span>'}
                                             </div>
                                         </div>`;
             }).join('')}
@@ -1187,7 +1363,7 @@
             display: flex;
             align-items: flex-start;
             gap: 16px;
-            background: linear-gradient(135deg, var(--primary-500, #743DD2) 0%, var(--primary-700, #5627A7) 100%);
+            background: linear-gradient(135deg, var(--primary-500, #06B6D4) 0%, var(--primary-700, #0E7490) 100%);
             padding: 22px 28px;
             color: #fff;
         }
@@ -1239,8 +1415,8 @@
             gap: 16px;
         }
         .iq-prem-act-col--highlight {
-            background: linear-gradient(160deg, rgba(116,61,210,0.05) 0%, rgba(103,47,199,0.02) 100%);
-            border-left: 1px solid rgba(116,61,210,0.2);
+            background: linear-gradient(160deg, rgba(6, 182, 212,0.05) 0%, rgba(8, 145, 178,0.02) 100%);
+            border-left: 1px solid rgba(6, 182, 212,0.2);
         }
         .iq-prem-opt-header {
             display: flex;
@@ -1290,11 +1466,11 @@
             outline: none;
         }
         .iq-prem-code-input:focus {
-            border-color: var(--primary-500, #743DD2);
-            box-shadow: 0 0 0 3px rgba(116,61,210,0.12);
+            border-color: var(--primary-500, #06B6D4);
+            box-shadow: 0 0 0 3px rgba(6, 182, 212,0.12);
         }
         .iq-prem-code-btn {
-            background: linear-gradient(135deg, var(--primary-500, #743DD2), var(--primary-600, #672FC7));
+            background: linear-gradient(135deg, var(--primary-500, #06B6D4), var(--primary-600, #0891B2));
             color: #fff;
             border: none;
             border-radius: 12px;
@@ -1306,9 +1482,9 @@
             white-space: nowrap;
         }
         .iq-prem-code-btn:hover {
-            background: #5627A7;
+            background: #0E7490;
             transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(116,61,210,0.35);
+            box-shadow: 0 6px 18px rgba(6, 182, 212,0.35);
         }
         .iq-prem-code-btn:disabled {
             opacity: 0.6;
@@ -1393,22 +1569,22 @@
 
         /* ── Keep old CSS classes for backward compat ────────────────── */
         .iq-paywall-card {
-            background: linear-gradient(145deg, #1a1227 0%, #292138 50%, #170e26 100%);
-            border: 2px solid rgba(136, 89, 216, 0.4);
+            background: linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #0b1329 100%);
+            border: 2px solid rgba(59, 130, 246, 0.4);
             border-radius: 24px;
             overflow: hidden;
-            box-shadow: 0 16px 48px rgba(26, 18, 39, 0.35), 0 0 24px rgba(116, 62, 210, 0.15);
-            color: #faf8fc;
+            box-shadow: 0 16px 48px rgba(15, 23, 42, 0.35), 0 0 24px rgba(37, 99, 235, 0.15);
+            color: #f8fafc;
             position: relative;
         }
         [data-theme="light"] .iq-paywall-card {
-            background: linear-gradient(145deg, #1a1227 0%, #492a7e 60%, #2F1E4D 100%);
-            border-color: rgba(159, 122, 224, 0.5);
+            background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 60%, #172554 100%);
+            border-color: rgba(96, 165, 250, 0.5);
             color: #ffffff;
         }
 
         .iq-shimmer-ribbon {
-            background: linear-gradient(90deg, #572e9f 0%, #8859d8 25%, #9f7ae0 50%, #8859d8 75%, #572e9f 100%);
+            background: linear-gradient(90deg, #1e40af 0%, #3b82f6 25%, #60a5fa 50%, #3b82f6 75%, #1e40af 100%);
             background-size: 300% 100%;
             animation: iqRibbonShimmer 3.5s ease infinite;
             padding: 10px 20px;
@@ -1440,13 +1616,13 @@
             margin-bottom: 16px;
         }
         .iq-premium-badge {
-            background: linear-gradient(135deg, #9A49C2, #A054C6, #5D2AB5);
-            color: #1a1227;
+            background: linear-gradient(135deg, #06B6D4, #10B981, #059669);
+            color: #ffffff;
             font-size: 1.15rem;
             font-weight: 900;
             padding: 7px 24px;
             border-radius: 50px;
-            box-shadow: 0 4px 20px rgba(160, 84, 198, 0.45);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.45);
             animation: iqBadgePop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
             display: inline-flex;
             align-items: center;
@@ -1466,7 +1642,7 @@
         }
         .iq-paywall-subtitle {
             font-size: 0.95rem;
-            color: rgba(232, 228, 238, 0.85);
+            color: rgba(226, 232, 240, 0.85);
             max-width: 680px;
             margin: 0 auto 24px;
             line-height: 1.7;
@@ -1476,8 +1652,8 @@
             display: inline-flex;
             align-items: baseline;
             gap: 8px;
-            background: rgba(87, 46, 159, 0.3);
-            border: 1.5px solid rgba(159, 122, 224, 0.4);
+            background: rgba(30, 64, 175, 0.3);
+            border: 1.5px solid rgba(96, 165, 250, 0.4);
             border-radius: 16px;
             padding: 12px 28px;
             margin-bottom: 30px;
@@ -1485,19 +1661,19 @@
         }
         .iq-price-label {
             font-size: 0.9rem;
-            color: rgba(232, 228, 238, 0.8);
+            color: rgba(226, 232, 240, 0.8);
             font-weight: 600;
         }
         .iq-price-val {
             font-size: 2.2rem;
             font-weight: 900;
-            color: #9f7ae0;
+            color: #60a5fa;
             line-height: 1;
         }
         .iq-price-curr {
             font-size: 1rem;
             font-weight: 800;
-            color: #bfa6ea;
+            color: #93c5fd;
         }
 
         .iq-steps-grid {
@@ -1524,13 +1700,13 @@
         }
         .iq-step-card:hover {
             background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(159, 122, 224, 0.4);
+            border-color: rgba(96, 165, 250, 0.4);
         }
         .iq-step-num {
             width: 38px;
             height: 38px;
             border-radius: 12px;
-            background: linear-gradient(135deg, #743DD2, #5627A7);
+            background: linear-gradient(135deg, #06B6D4, #0E7490);
             color: #ffffff;
             display: flex;
             align-items: center;
@@ -1538,7 +1714,7 @@
             font-weight: 900;
             font-size: 1.1rem;
             flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(116, 62, 210, 0.4);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
         }
         .iq-step-info { flex: 1; min-width: 0; }
         .iq-step-title {
@@ -1549,7 +1725,7 @@
         }
         .iq-step-desc {
             font-size: 0.85rem;
-            color: rgba(232, 228, 238, 0.8);
+            color: rgba(226, 232, 240, 0.8);
             margin-bottom: 12px;
             line-height: 1.5;
         }
@@ -1589,18 +1765,18 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            background: linear-gradient(135deg, #5426a3, #441f85);
+            background: linear-gradient(135deg, #0284c7, #0369a1);
             color: #ffffff;
             text-decoration: none;
             border-radius: 14px;
             padding: 12px 18px;
             transition: all 0.25s;
-            box-shadow: 0 4px 16px rgba(84, 38, 163, 0.35);
+            box-shadow: 0 4px 16px rgba(2, 132, 199, 0.35);
         }
         .iq-tg-btn:hover {
             transform: translateY(-2px);
-            background: linear-gradient(135deg, #672fc8, #5426a3);
-            box-shadow: 0 8px 24px rgba(84, 38, 163, 0.5);
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, 0.5);
         }
         .iq-tg-icon { font-size: 1.5rem; flex-shrink: 0; }
         .iq-tg-text { flex: 1; text-align: right; }
@@ -1616,7 +1792,7 @@
             margin-bottom: 24px;
             text-align: right;
             font-size: 0.88rem;
-            color: rgba(232, 228, 238, 0.9);
+            color: rgba(226, 232, 240, 0.9);
         }
         .iq-notice-title {
             font-weight: 800;
@@ -1635,7 +1811,7 @@
         .iq-code-divider {
             text-align: center;
             font-size: 0.9rem;
-            color: rgba(232, 228, 238, 0.7);
+            color: rgba(226, 232, 240, 0.7);
             margin-bottom: 14px;
             font-weight: 700;
         }
@@ -1857,7 +2033,7 @@
                             <span>📖</span> Lesson Details &amp; Summary
                         </h3>
                         <p style="color:var(--text-secondary);line-height:1.85;margin-bottom:20px;">
-                            ${lesson.description || course.description || 'Comprehensive explanation and practical exercises with Dr. Mohamed Abdullah.'}
+                            ${lesson.description || course.description || 'Comprehensive explanation and practical exercises with Mr. Islam Abdelwahed.'}
                         </p>
 
                         <div style="border-top:1px dashed var(--border);padding-top:18px;">
@@ -1940,13 +2116,13 @@
                 const typeLabel = l.type === 'video' ? '🎥 Video' : l.type === 'quiz' ? '📝 Quiz' : '📄 PDF Note';
                 const lessonRow = `
                                         <div class="accordion-lesson-item ${isActive ? 'active-lesson-item' : ''} ${l.isCompleted ? 'completed' : ''} ${l.isLocked ? 'locked' : ''}"
-                                             style="${isActive ? 'background:rgba(116,62,210,0.08);border-left:3px solid var(--primary,#743ed2);' : ''}"
+                                             style="${isActive ? 'background:rgba(37,99,235,0.08);border-left:3px solid var(--primary,#2563eb);' : ''}"
                                              onclick="${l.isLocked ? "showToast('This content is locked', 'error')" : "navigate('lesson/" + courseId + "/" + l.id + "')"}">
                                             <div class="accordion-lesson-left" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
                                                 <span class="accordion-lesson-num" style="font-weight:800;font-size:0.8rem;color:var(--text-muted);min-width:24px;">${pi + 1}.${li + 1}</span>
                                                 <div class="accordion-lesson-icon" style="font-size:1.1rem;flex-shrink:0;">${icon}</div>
                                                 <div style="min-width:0;flex:1;">
-                                                    <div class="accordion-lesson-title" style="font-weight:700;font-size:0.95rem;color:${isActive ? 'var(--primary,#743ed2)' : 'var(--text-primary)'};">
+                                                    <div class="accordion-lesson-title" style="font-weight:700;font-size:0.95rem;color:${isActive ? 'var(--primary,#2563eb)' : 'var(--text-primary)'};">
                                                         ${l.title} ${isActive ? '<span class="badge badge-primary" style="font-size:0.7rem;margin-left:6px;padding:2px 8px;">Playing Now ◀</span>' : ''}
                                                     </div>
                                                     <div class="accordion-lesson-meta" style="font-size:0.78rem;color:var(--text-muted);display:flex;gap:6px;align-items:center;margin-top:2px;">
@@ -1961,8 +2137,8 @@
                         : l.isCompleted
                             ? '<span class="badge badge-success" style="font-size:0.75rem;">✓ Completed</span>'
                             : !l.isLocked
-                                ? '<span class="badge" style="font-size:0.75rem;background:rgba(116,62,210,0.1);color:#743ed2;border:1px solid rgba(116,62,210,0.2);">Available</span>'
-                                : '<span class="badge" style="font-size:0.75rem;background:rgba(115,104,135,0.1);color:#736887;border:1px solid rgba(115,104,135,0.2);">🔒 Locked</span>'}
+                                ? '<span class="badge" style="font-size:0.75rem;background:rgba(37,99,235,0.1);color:#2563eb;border:1px solid rgba(37,99,235,0.2);">Available</span>'
+                                : '<span class="badge" style="font-size:0.75rem;background:rgba(100,116,139,0.1);color:#64748b;border:1px solid rgba(100,116,139,0.2);">🔒 Locked</span>'}
                                             </div>
                                         </div>`;
                 const quizRow = renderCurriculumQuizRow(l, courseId);
@@ -2163,8 +2339,8 @@
                     ' style="width:100%;height:100%;object-fit:cover;display:block;opacity:0.82;" loading="lazy" alt="">',
                     '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">',
                     '<div style="width:76px;height:76px;border-radius:50%;',
-                    'background:linear-gradient(135deg,#4F2499,#5D2AB5,#A054C6);',
-                    'box-shadow:0 0 36px rgba(93,42,181,0.7);display:flex;align-items:center;justify-content:center;',
+                    'background:linear-gradient(135deg,#047857,#059669,#06B6D4);',
+                    'box-shadow:0 0 36px rgba(5, 150, 105,0.7);display:flex;align-items:center;justify-content:center;',
                     'font-size:2.2rem;color:#fff;">&#9654;</div>',
                     '<span style="color:#fff;font-size:0.95rem;font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,0.8);',
                     'background:rgba(0,0,0,0.45);padding:4px 18px;border-radius:20px;">اضغط للتشغيل</span>',
@@ -2225,19 +2401,20 @@
             if (!l.quizId) return '';
             var attempt = (typeof window.getQuizAttempt === 'function' && currentUser)
                 ? window.getQuizAttempt(currentUser.id, l.quizId) : null;
+            var done = !!(attempt && attempt.status === 'submitted');
             var passed = !!(attempt && attempt.passed);
             var locked = !!l.isLocked;
-            var icon = passed ? '✅' : locked ? '🔒' : '📝';
+            var icon = done ? (passed ? '✅' : '📊') : locked ? '🔒' : '📝';
             var navAction = locked
                 ? "showToast('Complete the lesson first to unlock its quiz', 'error')"
                 : "navigate('test/" + l.quizId + "/" + courseId + "/" + (l.id || '') + "'); if(window.innerWidth<=768) toggleLessonSidebar(false);";
             return `
                                     <div class="sidebar-lesson-item ${passed ? 'completed' : ''} ${locked ? 'locked' : ''}"
-                                         style="background:rgba(116,61,210,0.05);"
+                                         style="background:rgba(6, 182, 212,0.05);"
                                          onclick="${navAction}">
                                         <span class="sl-num">↳</span>
                                         <span class="sl-icon">${icon}</span>
-                                        <span class="sl-title">Quiz</span>
+                                        <span class="sl-title">Quiz${done ? ' — ' + attempt.score + '/' + attempt.total : ''}</span>
                                         <span class="sl-duration"></span>
                                     </div>`;
         }
@@ -2248,21 +2425,24 @@
             var quiz = (typeof window.getQuizById === 'function') ? window.getQuizById(l.quizId) : null;
             var attempt = (typeof window.getQuizAttempt === 'function' && currentUser)
                 ? window.getQuizAttempt(currentUser.id, l.quizId) : null;
+            var done = !!(attempt && attempt.status === 'submitted');
             var passed = !!(attempt && attempt.passed);
             var locked = !!l.isLocked; // نفس حالة قفل الدرس المرتبط بيه
-            var icon = passed ? '✅' : locked ? '🔒' : '📝';
+            var icon = done ? (passed ? '✅' : '📊') : locked ? '🔒' : '📝';
             var title = 'Quiz: ' + (quiz ? quiz.title : l.title);
-            var statusBadge = passed
-                ? '<span class="badge badge-success" style="font-size:0.75rem;">✓ Passed</span>'
+            var statusBadge = done
+                ? '<span class="badge ' + (passed ? 'badge-success' : '') + '" style="font-size:0.75rem;' + (passed ? '' : 'background:rgba(220,38,38,0.1);color:#dc2626;border:1px solid rgba(220,38,38,0.25);') + '">' +
+                    (passed ? '✓ Passed' : '✕ Not Passed') + ' — ' + attempt.score + '/' + attempt.total +
+                    (attempt.percentage != null ? ' (' + attempt.percentage + '%)' : '') + '</span>'
                 : locked
-                    ? '<span class="badge" style="font-size:0.75rem;background:rgba(115,104,135,0.1);color:#736887;border:1px solid rgba(115,104,135,0.2);">🔒 Locked</span>'
-                    : '<span class="badge" style="font-size:0.75rem;background:rgba(116,61,210,0.12);color:#5627A7;border:1px solid rgba(116,61,210,0.25);">' + (attempt ? 'Retake Available' : '📝 Available') + '</span>';
+                    ? '<span class="badge" style="font-size:0.75rem;background:rgba(100,116,139,0.1);color:#64748b;border:1px solid rgba(100,116,139,0.2);">🔒 Locked</span>'
+                    : '<span class="badge" style="font-size:0.75rem;background:rgba(6, 182, 212,0.12);color:#0e7490;border:1px solid rgba(6, 182, 212,0.25);">📝 Available</span>';
             var navAction = locked
                 ? "showToast('Complete the lesson first to unlock its quiz', 'error')"
                 : "navigate('test/" + l.quizId + "/" + courseId + "/" + (l.id || '') + "')";
             return `
                                         <div class="accordion-lesson-item ${passed ? 'completed' : ''} ${locked ? 'locked' : ''}"
-                                             style="background:rgba(116,61,210,0.05);"
+                                             style="background:rgba(6, 182, 212,0.05);"
                                              onclick="${navAction}">
                                             <div class="accordion-lesson-left" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
                                                 <span class="accordion-lesson-num" style="font-weight:800;font-size:0.8rem;color:var(--text-muted);min-width:24px;">↳</span>
@@ -2271,11 +2451,13 @@
                                                     <div class="accordion-lesson-title" style="font-weight:700;font-size:0.95rem;color:var(--text-primary);">${title}</div>
                                                     <div class="accordion-lesson-meta" style="font-size:0.78rem;color:var(--text-muted);display:flex;gap:6px;align-items:center;margin-top:2px;">
                                                         <span>📝 Quiz</span>
+                                                        ${done ? `<span>• ✔ ${attempt.correct != null ? attempt.correct : '—'} / ✘ ${attempt.wrong != null ? attempt.wrong : '—'}</span>` : ''}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="accordion-lesson-right" style="flex-shrink:0;margin-left:8px;">
+                                            <div class="accordion-lesson-right" style="flex-shrink:0;margin-left:8px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
                                                 ${statusBadge}
+                                                ${done ? '<span style="font-size:0.72rem;color:var(--primary-600,#0891B2);font-weight:700;">📋 View Result</span>' : ''}
                                             </div>
                                         </div>`;
         }
@@ -2285,15 +2467,6 @@
         function getLessonQuizGateInfo(lesson, courseId) {
             const _cQuizId = lesson.quizId;
             if (!_cQuizId) return { locked: false };
-            // القرار من النتيجة المحفوظة في Firestore (QuizService) — ليس من حالة مؤقتة في المتصفح
-            if (window.QuizService && currentUser) {
-                const g = window.QuizService.evaluateGate(currentUser.id, _cQuizId);
-                if (!g.locked) return { locked: false };
-                const nav = "navigate('test/" + _cQuizId + "/" + courseId + "/" + (lesson.id || '') + "')";
-                if (g.state === 'loading') return { locked: true, message: 'Checking your quiz status…', btnLabel: 'Open Quiz', navQuiz: nav };
-                if (g.state === 'failed') return { locked: true, message: 'Score ' + g.achieved + '% &mdash; need ' + g.passRate + '% to unlock', btnLabel: 'Retry Quiz', navQuiz: nav };
-                return { locked: true, message: 'You must complete this lesson\'s quiz first (pass rate: ' + g.passRate + '%)', btnLabel: 'Start Quiz', navQuiz: nav };
-            }
             const _cQuiz = (typeof window.getQuizById === 'function') ? window.getQuizById(_cQuizId) : null;
             const _cPass = _cQuiz ? (_cQuiz.averageGrade || _cQuiz.passingGrade || 50) : 50;
             const _cAttempt = (typeof window.getQuizAttempt === 'function' && currentUser)
@@ -2307,8 +2480,8 @@
                     locked: true,
                     message: !_cAttempt
                         ? 'You must complete this lesson\'s quiz first (pass rate: ' + _cPass + '%)'
-                        : 'Score ' + _cPct + '% &mdash; need ' + _cPass + '% to unlock',
-                    btnLabel: !_cAttempt ? 'Start Quiz' : 'Retake Quiz',
+                        : 'Score ' + _cPct + '% &mdash; below the ' + _cPass + '% required. Each quiz can only be taken once, so the next step stays locked.',
+                    btnLabel: !_cAttempt ? 'Start Quiz' : 'View Result',
                     navQuiz: "navigate('test/" + _cQuizId + "/" + courseId + "/" + (lesson.id || '') + "')"
                 };
             }
@@ -2320,7 +2493,7 @@
                 '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">',
                 '<button class="btn btn-primary btn-lg" disabled style="opacity:0.45;cursor:not-allowed;">',
                 lockedLabel, '</button>',
-                '<div style="background:#F2E7F7;border:1px solid #A054C6;border-radius:12px;padding:10px 16px;font-size:0.85rem;font-weight:700;color:#431E82;text-align:center;">',
+                '<div style="background:#D1FAE5;border:1px solid #10B981;border-radius:12px;padding:10px 16px;font-size:0.85rem;font-weight:700;color:#065F46;text-align:center;">',
                 gate.message,
                 '</div>',
                 '<button class="btn btn-accent" onclick="' + gate.navQuiz + '">',
@@ -2358,7 +2531,7 @@
 
             <div style="display:flex;justify-content:center;gap:24px;margin:20px 0;flex-wrap:wrap;">
                 <div style="background:var(--bg-alt);padding:12px 20px;border-radius:12px;border:1px solid var(--border);">
-                    <div style="font-size:1.3rem;font-weight:900;color:var(--primary-500, #743DD2);">${qCount}</div>
+                    <div style="font-size:1.3rem;font-weight:900;color:var(--primary-500, #06B6D4);">${qCount}</div>
                     <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">Questions</div>
                 </div>
                 <div style="background:var(--bg-alt);padding:12px 20px;border-radius:12px;border:1px solid var(--border);">
@@ -2368,23 +2541,22 @@
                 ${prevAttempt ? `
                 <div style="background:var(--bg-alt);padding:12px 20px;border-radius:12px;border:1px solid var(--border);">
                     <div style="font-size:1.3rem;font-weight:900;color:${prevAttempt.passed ? 'var(--success)' : '#DC2626'};">${prevAttempt.score} / ${prevAttempt.total}</div>
-                    <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">${prevAttempt.passed ? '✅ Passed' : 'Previous Score'}</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);font-weight:700;">${prevAttempt.percentage != null ? prevAttempt.percentage + '%' : ''} ${prevAttempt.passed ? '· ✅ Passed' : '· Not Passed'}</div>
                 </div>` : ''}
             </div>
 
-            ${prevAttempt && prevAttempt.passed ? `
-            <div style="background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;border-radius:12px;padding:10px 16px;font-size:0.85rem;font-weight:700;margin:4px 0 16px;">
-                🔒 You've already passed this quiz — retake is disabled. You can view your result.
+            ${prevAttempt ? `
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;font-size:0.82rem;font-weight:700;">
+                <span style="background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;">✔ Correct: ${prevAttempt.correct != null ? prevAttempt.correct : '—'}</span>
+                <span style="background:#FEF2F2;color:#DC2626;border:1px solid #FCA5A5;border-radius:20px;padding:5px 12px;">✘ Wrong: ${prevAttempt.wrong != null ? prevAttempt.wrong : '—'}</span>
+            </div>
+            <div style="background:${prevAttempt.passed ? '#DCFCE7' : '#FEF2F2'};color:${prevAttempt.passed ? '#15803D' : '#DC2626'};border:1px solid ${prevAttempt.passed ? '#86EFAC' : '#FCA5A5'};border-radius:12px;padding:10px 16px;font-size:0.85rem;font-weight:700;margin:4px 0 16px;">
+                🔒 This quiz has already been submitted — each quiz can only be taken once. You can review your answers only.
             </div>` : ''}
 
             <div style="margin-top:24px;">
                 <button class="btn btn-primary btn-lg" onclick="navigate('test/${quizId}/${courseId}/${lesson.id || ''}')" style="padding:14px 36px;font-size:1.05rem;font-weight:900;">
-                    ${(function () {
-                        if (!prevAttempt) return '⚡ Start Quiz Now';
-                        var maxA = parseInt(quiz.maxAttempts, 10) || 0;
-                        var noLeft = maxA > 0 && (prevAttempt.attemptsUsed || 1) >= maxA;
-                        return (prevAttempt.passed || noLeft) ? '📋 View Result' : '⚡ Retake Quiz';
-                    })()}
+                    ${prevAttempt ? '📋 View Result' : '⚡ Start Quiz Now'}
                 </button>
             </div>
         </div>`;
@@ -2396,17 +2568,17 @@
             var s = document.createElement('style');
             s.id = 'quiz-preview-styles';
             s.textContent = [
-                '.quiz-preview-card{background:var(--bg-surface,#fff);border:2px solid var(--primary-200,#d9caf3);border-radius:24px;padding:40px 32px;text-align:center;max-width:540px;margin:0 auto;box-shadow:0 8px 32px rgba(87,46,159,.08);}',
+                '.quiz-preview-card{background:var(--bg-surface,#fff);border:2px solid var(--primary-200,#bfdbfe);border-radius:24px;padding:40px 32px;text-align:center;max-width:540px;margin:0 auto;box-shadow:0 8px 32px rgba(30,64,175,.08);}',
                 '.qp-icon{font-size:3.5rem;margin-bottom:12px;}',
-                '.qp-title{font-size:1.4rem;font-weight:900;margin-bottom:6px;color:var(--text-primary,#1a1227);}',
-                '.qp-subject{color:var(--text-secondary,#736887);font-size:.9rem;margin-bottom:20px;}',
-                '.qp-stats{display:flex;gap:20px;justify-content:center;background:var(--bg-alt,#faf8fc);border-radius:14px;padding:16px 20px;margin-bottom:24px;}',
+                '.qp-title{font-size:1.4rem;font-weight:900;margin-bottom:6px;color:var(--text-primary,#0f172a);}',
+                '.qp-subject{color:var(--text-secondary,#64748b);font-size:.9rem;margin-bottom:20px;}',
+                '.qp-stats{display:flex;gap:20px;justify-content:center;background:var(--bg-alt,#f8fafc);border-radius:14px;padding:16px 20px;margin-bottom:24px;}',
                 '.qp-stat{display:flex;flex-direction:column;align-items:center;gap:3px;}',
-                '.qp-stat-num{font-size:1.3rem;font-weight:900;color:var(--primary-600,#743ed2);}',
-                '.qp-stat-lbl{font-size:.78rem;color:var(--text-secondary,#736887);font-weight:600;}',
-                '.qp-prev-result{background:#f6f2fc;border:1px solid #d9caf3;border-radius:12px;padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;font-size:.9rem;}',
+                '.qp-stat-num{font-size:1.3rem;font-weight:900;color:var(--primary-600,#2563eb);}',
+                '.qp-stat-lbl{font-size:.78rem;color:var(--text-secondary,#64748b);font-weight:600;}',
+                '.qp-prev-result{background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;font-size:.9rem;}',
                 '.qp-actions{margin-bottom:16px;}',
-                '.qp-hint{font-size:.82rem;color:var(--text-muted,#a298b4);}'
+                '.qp-hint{font-size:.82rem;color:var(--text-muted,#94a3b8);}'
             ].join('');
             document.head.appendChild(s);
         })();
@@ -2431,15 +2603,18 @@
                 '</div></div>';
         }).join('');
 
+        var isPass = !!attempt.passed;
         return `
-        <div style="min-height:100vh;padding:calc(var(--header-height, 70px) + 30px) 0 60px;background:var(--bg-alt,#faf8fc);">
+        <div style="min-height:100vh;padding:calc(var(--header-height, 70px) + 30px) 0 60px;background:var(--bg-alt,#f8fafc);">
             <div class="container" style="max-width:680px;margin:0 auto;padding:0 20px;">
                 <div style="background:var(--bg-surface,#fff);border:1.5px solid var(--border);border-radius:20px;padding:36px 28px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.05);">
-                    <div style="font-size:3rem;margin-bottom:8px;">✅</div>
-                    <h2 style="font-size:1.3rem;font-weight:900;margin-bottom:6px;color:var(--text-primary);">You've Already Passed This Quiz</h2>
+                    <div style="font-size:3rem;margin-bottom:8px;">${isPass ? '✅' : '📝'}</div>
+                    <h2 style="font-size:1.3rem;font-weight:900;margin-bottom:6px;color:var(--text-primary);">You Have Already Completed This Quiz</h2>
                     <p style="color:var(--text-secondary);margin-bottom:18px;">${quiz.title || 'Quiz'} — Score: <strong>${attempt.score}/${attempt.total} (${attempt.percentage != null ? attempt.percentage : '—'}%)</strong></p>
-                    <div style="background:#DCFCE7;color:#15803D;border:1px solid #86EFAC;border-radius:12px;padding:10px 16px;font-size:0.85rem;font-weight:700;margin-bottom:22px;display:inline-block;">
-                        🔒 Retake is disabled after passing — review your answers below.
+                    <div style="background:${isPass ? '#DCFCE7' : '#FEF2F2'};color:${isPass ? '#15803D' : '#DC2626'};border:1px solid ${isPass ? '#86EFAC' : '#FCA5A5'};border-radius:12px;padding:10px 16px;font-size:0.85rem;font-weight:700;margin-bottom:22px;display:inline-block;">
+                        ${isPass
+                            ? '🔒 Each quiz can only be taken once — review your answers below.'
+                            : '🔒 Each quiz can only be taken once, and the required score was not reached — review your answers below.'}
                     </div>
                     <div>
                         <button class="btn btn-primary" onclick="navigate('${backUrl}')">&larr; Back to Lesson</button>
@@ -2464,42 +2639,704 @@
             navigate('login');
             return '';
         }
-        // الصفحة نفسها تُرسم من quiz-ui.js (JavaScript فعلي) — كانت تعتمد على <script>
-        // داخل innerHTML والمتصفح لا يشغّله أبداً، فلم يكن الاختبار يعمل.
-        return '<div id="quizRoot"></div>';
+
+        // ── جلب الاختبار من DB ───────────────────────────────────
+        var quiz = (typeof window.getQuizById === 'function') ? window.getQuizById(quizId) : null;
+        if (!quiz) {
+            return `<div style="padding:calc(var(--header-height,70px) + 40px) 0 60px;">
+                <div class="container"><div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <h3>Quiz Not Found</h3>
+                    <p>The quiz you are looking for (${quizId || '—'}) does not exist.</p>
+                    <button class="btn btn-primary" onclick="history.back()">&larr; Back</button>
+                </div></div></div>`;
+        }
+
+        var questions = quiz.questionsList || [];
+        var qCount = questions.length;
+        var backUrl = courseId && lessonId ? 'lesson/' + courseId + '/' + lessonId : courseId ? 'license/' + courseId : 'courses';
+
+        // ── نتيجة سابقة (فحص أولي سريع فقط لعرض أفضل عند التحميل — الفحص
+        //    الحقيقي والنهائي بيحصل بشكل غير متزامن جوه initTestPage عن
+        //    طريق قاعدة البيانات مباشرة، وهو اللي بيحدد فعليًا لو الطالب
+        //    يقدر يحل الاختبار ولا لأ. الفحص هنا لا يمنع أي حاجة نهائيًا) ──
+        var prevAttempt = (typeof window.getQuizAttempt === 'function' && currentUser)
+            ? window.getQuizAttempt(currentUser.id, quizId) : null;
+
+        return `
+        <div class="test-page" id="testPageRoot">
+
+            <!-- ── Header ── -->
+            <div class="test-header">
+                <button class="test-back-btn" onclick="navigate('${backUrl}')" title="Back">&larr;</button>
+                <div class="test-header-info">
+                    <div class="test-title">${quiz.title || 'Quiz'}</div>
+                    ${quiz.subject ? `<div class="test-subject">${quiz.subject}</div>` : ''}
+                </div>
+                <div class="test-header-meta">
+                    <span id="testTimerBadge" class="test-timer-badge" style="display:${quiz.time ? '' : 'none'};">
+                        ⏱️ <span id="testTimerDisplay">${quiz.time || 0}:00</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- ── Progress Bar ── -->
+            <div class="test-progress-bar-wrap">
+                <div class="test-progress-bar" id="testProgressBar" style="width:0%"></div>
+            </div>
+            <div class="test-progress-info">
+                <span>Question <strong id="testCurNum">1</strong> of <strong>${qCount}</strong></span>
+                <span id="testProgressPct">0%</span>
+            </div>
+
+            <!-- ── الأسئلة ── -->
+            <div class="test-body">
+                <div class="test-questions-wrap" id="testQuestionsWrap">
+                    ${questions.map(function (q, qi) {
+            var letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+            var opts = Array.isArray(q.opts) ? q.opts : [];
+            return `
+                        <div class="test-question-slide ${qi === 0 ? 'active' : ''}" id="testQ_${qi}" data-qi="${qi}">
+                            <div class="test-q-num">Question ${qi + 1} of ${qCount}</div>
+                            ${q.mediaUrl ? `<div class="test-q-img"><img src="${q.mediaUrl}" style="max-width:min(${q.imageWidth || 360}px, 100%);${q.imageHeight ? 'height:' + q.imageHeight + 'px;' : ''}object-fit:contain;border-radius:12px;border:1px solid var(--border);" loading="lazy"></div>` : ''}
+                            <div class="test-q-text">${q.q || ''}</div>
+                            <div class="test-options" id="testOpts_${qi}">
+                                ${opts.map(function (opt, oi) {
+                return `<button class="test-option" data-qi="${qi}" data-oi="${oi}" onclick="selectTestOption(${qi}, ${oi}, this)">
+                                        <span class="test-opt-letter">${letters[oi] || (oi + 1)}</span>
+                                        <span class="test-opt-text">${opt}</span>
+                                        <span class="test-opt-check">✓</span>
+                                    </button>`;
+            }).join('')}
+                            </div>
+                            <div class="test-q-hint" id="testHint_${qi}" style="display:none;"></div>
+                        </div>`;
+        }).join('')}
+                </div>
+
+                <!-- ── ناف الأسئلة (أزرار مربعة) ── -->
+                <div class="test-q-nav-grid" id="testQNavGrid">
+                    ${questions.map(function (q, qi) {
+            return `<button class="test-q-nav-dot ${qi === 0 ? 'current' : ''}" id="testNav_${qi}" onclick="goToTestQ(${qi})" title="Q${qi + 1}">${qi + 1}</button>`;
+        }).join('')}
+                </div>
+            </div>
+
+            <!-- ── أزرار التنقل ── -->
+            <div class="test-footer">
+                <button class="btn btn-outline" id="testPrevBtn" onclick="testNavQ(-1)" disabled>
+                    &larr; Previous
+                </button>
+                <button class="btn btn-primary" id="testNextBtn" onclick="testNavQ(1)" ${qCount <= 1 ? 'style="display:none"' : ''}>
+                    Next &rarr;
+                </button>
+                <button class="btn btn-accent" id="testSubmitBtn" onclick="confirmSubmitTest()" style="${qCount > 1 ? 'display:none' : ''}">
+                    Submit Quiz ✅
+                </button>
+            </div>
+
+            <!-- ── ملحوظة أسفل الصفحة ── -->
+            <div class="test-note">
+                <span>📌 You can navigate between questions before final submission</span>
+                <span id="testAnsweredCount">0 / ${qCount} Answered</span>
+            </div>
+
+        </div>
+
+        <!-- ── نافذة نتيجة الاختبار ── -->
+        <div class="test-result-overlay" id="testResultOverlay" style="display:none;">
+            <div class="test-result-modal" id="testResultModal">
+                <div class="trm-icon" id="trmIcon">🎉</div>
+                <h2 class="trm-title" id="trmTitle">Quiz Result</h2>
+                <div class="trm-score" id="trmScore">—</div>
+                <div class="trm-meta" id="trmMeta"></div>
+                <div class="trm-review" id="trmReview"></div>
+                <div id="trmGateMsg" style="display:none;margin-bottom:14px;padding:12px 18px;border-radius:14px;font-size:0.88rem;font-weight:700;text-align:center;"></div>
+                <div class="trm-actions" id="trmActions">
+                    <button class="btn btn-primary" onclick="navigate('${backUrl}')">&larr; Back to Lesson</button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+        /* ═══════════════════════════════════════════════
+           TEST PAGE — Premium Redesign
+           كل الـ id/class الوظيفية (زي .test-option, .selected,
+           .correct, .wrong, .test-q-nav-dot, .answered, .current)
+           اتسابت زي ما هي بالظبط عشان الـ JS شغال عليها مباشرة —
+           التعديل هنا بصري (CSS) فقط.
+           ═══════════════════════════════════════════════ */
+        body { overflow-x: hidden; }
+        .test-page {
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            background:
+                radial-gradient(1200px 600px at 15% -10%, rgba(6, 182, 212,0.06), transparent 60%),
+                radial-gradient(1000px 500px at 100% 0%, rgba(59,130,246,0.05), transparent 55%),
+                var(--bg-alt, #f8fafc);
+            padding-top: var(--header-height, 70px);
+            font-family: 'Tajawal', sans-serif;
+        }
+        /* Header */
+        .test-header {
+            background: var(--bg-surface, #fff);
+            border-bottom: 1px solid var(--border, #e2e8f0);
+            padding: 14px 24px;
+            display: flex; align-items: center; gap: 14px;
+            position: sticky; top: var(--header-height, 70px); z-index: 100;
+            box-shadow: 0 2px 16px rgba(15,23,42,.05);
+        }
+        .test-back-btn {
+            width: 38px; height: 38px; border: 1.5px solid var(--border, #e2e8f0);
+            border-radius: 12px; background: var(--bg-alt, #f8fafc);
+            font-size: 1.1rem; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            color: var(--text-primary, #0f172a); transition: background .2s, border-color .2s;
+        }
+        .test-back-btn:hover { background: var(--primary-50, #fff7ed); border-color: var(--primary-300, #67e8f9); }
+        .test-header-info { flex: 1; min-width: 0; }
+        .test-title { font-size: 1rem; font-weight: 900; color: var(--text-primary, #0f172a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .test-subject { font-size: .8rem; color: var(--text-secondary, #64748b); margin-top: 2px; }
+        .test-timer-badge {
+            background: linear-gradient(135deg, #CFFAFE, #A7F3D0);
+            color: #065f46; border: 1px solid #34d399;
+            border-radius: 20px; padding: 6px 14px;
+            font-size: .85rem; font-weight: 800; white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(52,211,153,.25);
+        }
+        .test-timer-badge.warning { background: linear-gradient(135deg,#fee2e2,#fecaca); color: #dc2626; border-color: #fca5a5; animation: timerPulse 1s infinite; }
+        @keyframes timerPulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+
+        /* Progress */
+        .test-progress-bar-wrap {
+            height: 6px; background: var(--border, #e2e8f0); position: relative;
+        }
+        .test-progress-bar {
+            height: 100%; background: var(--accent-gradient, linear-gradient(90deg, #06B6D4, #0891B2));
+            border-radius: 0 4px 4px 0; transition: width .4s ease;
+        }
+        .test-progress-info {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 24px; font-size: .82rem;
+            color: var(--text-secondary, #64748b); font-weight: 700;
+        }
+
+        /* Body */
+        .test-body {
+            flex: 1; max-width: 720px; width: 100%;
+            margin: 0 auto; padding: 24px 20px 0;
+        }
+
+        /* Question slides */
+        .test-questions-wrap { position: relative; }
+        .test-question-slide { display: none; animation: slideIn .3s ease; }
+        .test-question-slide.active { display: block; }
+        @keyframes slideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ── Question badge (was a plain uppercase label) ── */
+        .test-q-num {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: .75rem; font-weight: 900; letter-spacing: .03em;
+            color: #fff; text-transform: uppercase;
+            background: var(--accent-gradient, linear-gradient(135deg, #06B6D4, #0891B2));
+            padding: 6px 14px; border-radius: 999px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(6, 182, 212,.28);
+        }
+        .test-q-img { text-align: center; margin-bottom: 16px; }
+
+        /* ── Question card: مساحة منفصلة تمامًا عن الاختيارات ── */
+        .test-q-text {
+            font-size: 1.15rem; font-weight: 800; line-height: 1.75;
+            color: var(--text-primary, #0f172a);
+            margin-bottom: 22px;
+            background: var(--bg-surface, #fff);
+            border: 1px solid var(--border, #e2e8f0);
+            border-radius: 20px; padding: 24px 26px;
+            box-shadow: 0 6px 24px rgba(15,23,42,.05);
+            position: relative;
+        }
+        .test-q-text::before {
+            content: '';
+            position: absolute; inset-inline-start: 0; top: 14px; bottom: 14px;
+            width: 4px; border-radius: 4px;
+            background: var(--accent-gradient, linear-gradient(180deg, #06B6D4, #0891B2));
+        }
+
+        .test-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+
+        /* ── Option card ── default / hover / selected حالات منفصلة تمامًا ── */
+        .test-option {
+            position: relative;
+            display: flex; align-items: center; gap: 16px;
+            background: var(--bg-surface, #fff);
+            border: 2px solid var(--border, #e2e8f0);
+            border-radius: 16px; padding: 16px 20px;
+            cursor: pointer; text-align: right;
+            font-family: 'Tajawal', sans-serif; font-size: .98rem; font-weight: 700;
+            color: var(--text-primary, #0f172a);
+            transition: border-color .18s ease, box-shadow .18s ease, transform .12s ease, background-color .18s ease;
+            width: 100%;
+        }
+        /* Hover = حركة بسيطة وناعمة فقط، ومحدود بالحالة غير المختارة عشان
+           ميتخلطش بصريًا مع .selected أبدًا مهما تحرك الماوس */
+        .test-option:not(.selected):not(.correct):not(.wrong):hover {
+            border-color: var(--primary-300, #67e8f9);
+            box-shadow: 0 6px 18px rgba(15,23,42,.07);
+            transform: translateY(-2px);
+        }
+        .test-option:active { transform: translateY(0) scale(.995); }
+
+        /* Selected = حالة قوية وواضحة جدًا، مستقلة تمامًا عن hover */
+        .test-option.selected {
+            border-color: var(--primary-500, #06B6D4);
+            background: var(--primary-50, #fff7ed);
+            box-shadow: 0 8px 22px rgba(6, 182, 212,.16);
+        }
+        .test-option.correct  { border-color: #16a34a; background: #f0fdf4; }
+        .test-option.wrong    { border-color: #dc2626; background: #fef2f2; }
+
+        .test-opt-letter {
+            min-width: 38px; height: 38px; border-radius: 50%;
+            background: var(--bg-alt, #f1f5f9);
+            display: flex; align-items: center; justify-content: center;
+            font-size: .88rem; font-weight: 900; color: var(--primary-600, #0891B2);
+            flex-shrink: 0; transition: background .18s, color .18s, transform .18s;
+        }
+        .test-option.selected .test-opt-letter {
+            background: var(--accent-gradient, linear-gradient(135deg,#06B6D4,#0891B2));
+            color: #fff; transform: scale(1.06);
+        }
+        .test-option.correct  .test-opt-letter { background: #16a34a; color: #fff; }
+        .test-option.wrong    .test-opt-letter { background: #dc2626; color: #fff; }
+        .test-opt-text { flex: 1; line-height: 1.6; }
+
+        /* Check indicator — بيظهر بس مع .selected (نفس الكلاس اللي الجافاسكريبت
+           بيحطه فعلاً، مفيش أي منطق جديد، مجرد عنصر بصري إضافي) */
+        .test-opt-check {
+            width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+            display: none; align-items: center; justify-content: center;
+            background: var(--primary-500, #06B6D4); color: #fff;
+            font-size: .78rem; font-weight: 900;
+        }
+        .test-option.selected .test-opt-check { display: flex; }
+        .test-option.correct  .test-opt-check { display: flex; background: #16a34a; }
+        .test-option.wrong    .test-opt-check { display: none; }
+
+        .test-option:focus-visible {
+            outline: 2.5px solid var(--primary-400, #22d3ee); outline-offset: 2px;
+        }
+
+        .test-q-hint {
+            padding: 10px 14px; border-radius: 10px;
+            font-size: .85rem; font-weight: 700; margin-top: 6px;
+        }
+        .test-q-hint.correct { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .test-q-hint.wrong   { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+
+        /* ── Question Nav Grid — أرقام أنيقة بحالات واضحة ── */
+        .test-q-nav-grid {
+            display: flex; flex-wrap: wrap; gap: 10px;
+            padding: 18px 0 6px; margin-top: 10px;
+            border-top: 1px dashed var(--border, #e2e8f0);
+        }
+        .test-q-nav-dot {
+            width: 40px; height: 40px; border-radius: 12px;
+            border: 2px solid var(--border, #e2e8f0);
+            background: var(--bg-surface, #fff);
+            font-size: .85rem; font-weight: 800; cursor: pointer;
+            color: var(--text-secondary, #64748b); transition: all .18s;
+            position: relative;
+        }
+        .test-q-nav-dot:hover { border-color: var(--primary-300, #67e8f9); transform: translateY(-1px); }
+        /* Answered = تم الإجابة (مش بالضرورة السؤال الحالي) */
+        .test-q-nav-dot.answered { background: var(--primary-100, #ffedd5); border-color: var(--primary-300, #67e8f9); color: var(--primary-700, #0e7490); }
+        /* Current = السؤال المعروض دلوقتي — Ring مميز يتراكب فوق أي حالة تانية */
+        .test-q-nav-dot.current {
+            border-color: var(--primary-500, #06B6D4);
+            background: var(--accent-gradient, linear-gradient(135deg,#06B6D4,#0891B2));
+            color: #fff;
+            box-shadow: 0 0 0 4px rgba(6, 182, 212,.18);
+        }
+
+        /* Footer */
+        .test-footer {
+            max-width: 720px; width: 100%; margin: 0 auto;
+            padding: 16px 20px 12px;
+            display: flex; gap: 12px; justify-content: space-between;
+        }
+        .test-note {
+            max-width: 720px; width: 100%; margin: 0 auto 20px;
+            padding: 0 20px; display: flex; justify-content: space-between;
+            font-size: .8rem; color: var(--text-muted, #94a3b8);
+        }
+
+        /* Result Modal */
+        .test-result-overlay {
+            position: fixed; inset: 0; background: rgba(15,23,42,.6);
+            z-index: 9999; display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(6px); padding: 16px;
+        }
+        .test-result-modal {
+            background: var(--bg-surface, #fff); border-radius: 28px;
+            padding: 40px 32px; max-width: 480px; width: 100%;
+            text-align: center; box-shadow: 0 32px 80px rgba(15,23,42,.25);
+            animation: resultIn .4s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes resultIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+        .trm-icon { font-size: 4rem; margin-bottom: 12px; }
+        .trm-title { font-size: 1.4rem; font-weight: 900; margin-bottom: 8px; color: var(--text-primary, #0f172a); }
+        .trm-score { font-size: 3rem; font-weight: 900; margin: 12px 0; color: var(--primary-600, #0891B2); }
+        .trm-meta { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; font-size: .9rem; }
+        .trm-meta-item { padding: 6px 14px; border-radius: 20px; font-weight: 700; }
+        .trm-correct { background: #dcfce7; color: #16a34a; }
+        .trm-wrong   { background: #fef2f2; color: #dc2626; }
+        .trm-pct     { background: #FFF7ED; color: #0E7490; }
+        .trm-review { max-height: 260px; overflow-y: auto; text-align: right; margin-bottom: 20px; }
+        .trm-q-row {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 0; border-bottom: 1px solid var(--border, #e2e8f0);
+            font-size: .85rem;
+        }
+        .trm-q-row:last-child { border-bottom: none; }
+        .trm-q-mark { font-size: 1rem; flex-shrink: 0; }
+        .trm-q-info { flex: 1; }
+        .trm-q-text { font-weight: 700; margin-bottom: 3px; }
+        .trm-q-answer { color: var(--text-secondary, #64748b); }
+        .trm-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+        /* Dark mode */
+        [data-theme=dark] .test-page { background: #0b1220; }
+        [data-theme=dark] .test-header { background: #111827; border-color: #1f2937; }
+        [data-theme=dark] .test-q-text { background: #111827; border-color: #1f2937; color: #e2e8f0; }
+        [data-theme=dark] .test-option { background: #111827; border-color: #1f2937; color: #e2e8f0; }
+        [data-theme=dark] .test-option:not(.selected):not(.correct):not(.wrong):hover { border-color: var(--primary-500, #06B6D4); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+        [data-theme=dark] .test-option.selected { background: rgba(6, 182, 212,.12); }
+        [data-theme=dark] .test-opt-letter { background: #1e293b; }
+        [data-theme=dark] .test-q-nav-dot { background: #1e293b; border-color: #334155; color: #94a3b8; }
+        [data-theme=dark] .test-q-nav-dot.answered { background: rgba(6, 182, 212,.18); border-color: var(--primary-500,#06B6D4); color: var(--primary-300,#67e8f9); }
+        [data-theme=dark] .test-result-modal { background: #111827; }
+        [data-theme=dark] .trm-title { color: #e2e8f0; }
+
+        @media (max-width: 600px) {
+            .test-page { overflow-x: hidden; }
+            .test-header { padding: 10px 12px; gap: 10px; }
+            .test-title { font-size: .92rem; }
+            .test-subject { font-size: .72rem; }
+            .test-back-btn { width: 34px; height: 34px; font-size: 1rem; flex-shrink: 0; }
+            .test-timer-badge { font-size: .78rem; padding: 5px 10px; flex-shrink: 0; }
+            .test-progress-info { padding: 8px 14px; font-size: .76rem; }
+            .test-body { padding: 14px 10px 0; }
+            .test-q-num { font-size: .68rem; padding: 5px 12px; margin-bottom: 12px; }
+            .test-q-text { font-size: 1rem; line-height: 1.65; padding: 16px 16px; margin-bottom: 16px; }
+            .test-options { gap: 10px; }
+            .test-option { padding: 14px 14px; font-size: .92rem; gap: 12px; min-height: 48px; }
+            .test-opt-letter { min-width: 34px; height: 34px; font-size: .8rem; }
+            .test-opt-check { width: 20px; height: 20px; font-size: .68rem; }
+            .test-q-nav-grid { gap: 8px; padding: 14px 0 4px; }
+            .test-q-nav-dot { width: 38px; height: 38px; font-size: .8rem; }
+            .test-footer { padding: 10px 10px 14px; gap: 10px; }
+            .test-footer .btn { flex: 1; min-height: 48px; font-size: .92rem; padding: 12px 10px; white-space: nowrap; }
+            .test-note { flex-direction: column; gap: 4px; padding: 0 12px; font-size: .74rem; }
+            .test-result-modal { padding: 26px 18px; border-radius: 22px; max-height: 90vh; overflow-y: auto; }
+            .trm-icon { font-size: 3rem; }
+            .trm-score { font-size: 2.1rem; margin: 8px 0; }
+            .trm-title { font-size: 1.1rem; }
+            .trm-meta { gap: 8px; font-size: .8rem; }
+            .trm-meta-item { padding: 5px 10px; }
+            .trm-actions { flex-direction: column; }
+            .trm-actions .btn { width: 100%; min-height: 46px; }
+        }
+
+        /* منع أي Scroll أفقي بسبب صورة سؤال أعرض من الشاشة أو أي عنصر تاني */
+        .test-page, .test-page * { max-width: 100%; box-sizing: border-box; }
+        .test-q-text, .test-opt-text { overflow-wrap: break-word; word-break: break-word; }
+        </style>
+        `;
     }
 
-    // يتحقق أن الاختبار مربوط فعلاً بهذا الدرس داخل بيانات الكورس (وليس مجرد ID في الرابط)
-    function resolveQuizLink(quizId, courseId, lessonId) {
-        try {
-            const course = getAllCourses().find(c => String(c.id) === String(courseId));
-            if (!course) return { ok: false, reason: 'lesson_not_found' };
-            const isEnrolled = (currentUser.enrolledCourses || []).some(id => String(id) === String(courseId));
-            if (!(course.isFree || isEnrolled)) return { ok: false, reason: 'no_access' };
-            const pk = sanitizeEffectivePackages(getEffectiveCoursePackages(course, isEnrolled));
-            const raw = pk.flatMap(p => p.lessons);
-            const all = (typeof window.enrichLessonsWithProgress === 'function')
-                ? window.enrichLessonsWithProgress(currentUser.id, courseId, raw) : raw;
-            const lesson = all.find(l => String(l.id) === String(lessonId) || String(l.lessonId) === String(lessonId));
-            if (!lesson) return { ok: false, reason: 'lesson_not_found' };
-            if (String(lesson.quizId) !== String(quizId)) return { ok: false, reason: 'not_linked' };
-            if (lesson.isLocked) return { ok: false, reason: 'lesson_locked' };
-            return { ok: true, lesson: lesson };
-        } catch (e) { return { ok: false, reason: 'lesson_not_found' }; }
-    }
-
+    // ── Test Page Init — منطق التفاعل الحقيقي (منفصل عن renderTestPage) ──
+    // ملحوظة مهمة جداً: أي <script> بيتحط جوه HTML عن طريق .innerHTML،
+    // المتصفح بيتجاهله ومابيشغّلوش خالص (سلوك موثّق في كل المتصفحات) —
+    // وده كان هو السبب الحقيقي وراء إن زر Next وتثبيت الإجابات ماكانوش
+    // بيشتغلوا: الكود التفاعلي بالكامل كان جوه <script> زي ده جوه الـ
+    // Template، ومكانش بينفّذ إطلاقاً بعد إدراج الصفحة. باقي صفحات المنصة
+    // (زي renderLessonPage + initLessonPage) شغالة بنمط "render الـ HTML
+    // الأول، وبعدين نداء دالة init() حقيقية منفصلة" — وده بالظبط اللي
+    // طبّقته هنا عشان يتماشى مع باقي المنصة ويشتغل فعليًا هذه المرة.
     function initTestPage(quizId, courseId, lessonId) {
-        const root = document.getElementById('quizRoot');
-        if (!root || !window.QuizUI || !currentUser) return;
-        window.QuizUI.injectStyles();
-        root.innerHTML = '<div class="qz-page"><div class="qz-wrap"><div class="qz-card"><div class="qz-loading"><div class="qz-spin"></div><div>Loading quiz…</div></div></div></div></div>';
-        const user = currentUser;
-        const go = () => {
-            if (!root.isConnected) return;
-            window.QuizUI.mount(root, { quizId: quizId, courseId: courseId, lessonId: lessonId, link: resolveQuizLink(quizId, courseId, lessonId) }, user);
-        };
-        // ننتظر أول لقطة من Firestore لمحاولات الطالب قبل الحكم بقفل/فتح الدرس
-        if (window.QuizService) window.QuizService.whenReady(user.id, 4000).then(go); else go();
+        (function() {
+            // ── State ────────────────────────────────────────────────
+            var _quiz      = window.getQuizById ? window.getQuizById(quizId) : null;
+            var _questions = _quiz ? (_quiz.questionsList || []) : [];
+            var _qCount    = _questions.length;
+            var _answers   = {}; // qi → oi
+            var _curQ      = 0;
+            var _submitted = false;
+            var _timer     = null;
+            var _timeLeft  = (_quiz && _quiz.time) ? _quiz.time * 60 : 0;
+            var _letters   = ['A','B','C','D','E','F'];
+
+            // ── Select Option ─────────────────────────────────────────
+            window.selectTestOption = function(qi, oi, btn) {
+                if (_submitted) return;
+                _answers[qi] = oi;
+
+                // تحديث أزرار هذا السؤال
+                var wrap = document.getElementById('testOpts_' + qi);
+                if (wrap) {
+                    wrap.querySelectorAll('.test-option').forEach(function(b) { b.classList.remove('selected'); });
+                    btn.classList.add('selected');
+                }
+
+                // تحديث شبكة الأسئلة
+                var navDot = document.getElementById('testNav_' + qi);
+                if (navDot) navDot.classList.add('answered');
+
+                // تحديث عداد الإجابات
+                updateAnsweredCount();
+                updateProgress();
+            };
+
+            function updateAnsweredCount() {
+                var cnt = Object.keys(_answers).length;
+                var el = document.getElementById('testAnsweredCount');
+                if (el) el.textContent = cnt + ' / ' + _qCount + ' Answered';
+            }
+
+            function updateProgress() {
+                var cnt = Object.keys(_answers).length;
+                var pct = _qCount > 0 ? Math.round(cnt / _qCount * 100) : 0;
+                var bar = document.getElementById('testProgressBar');
+                var pctEl = document.getElementById('testProgressPct');
+                if (bar) bar.style.width = pct + '%';
+                if (pctEl) pctEl.textContent = pct + '%';
+            }
+
+            // ── Navigate Between Questions ────────────────────────────
+            window.goToTestQ = function(qi) {
+                if (qi < 0 || qi >= _qCount) return;
+
+                // إخفاء الحالي
+                var old = document.getElementById('testQ_' + _curQ);
+                if (old) old.classList.remove('active');
+                var oldNav = document.getElementById('testNav_' + _curQ);
+                if (oldNav) oldNav.classList.remove('current');
+
+                _curQ = qi;
+
+                // إظهار الجديد
+                var cur = document.getElementById('testQ_' + _curQ);
+                if (cur) { cur.classList.add('active'); }
+                var curNav = document.getElementById('testNav_' + _curQ);
+                if (curNav) curNav.classList.add('current');
+
+                // تحديث رقم السؤال
+                var numEl = document.getElementById('testCurNum');
+                if (numEl) numEl.textContent = _curQ + 1;
+
+                // أزرار السابق/التالي/التسليم
+                var prevBtn   = document.getElementById('testPrevBtn');
+                var nextBtn   = document.getElementById('testNextBtn');
+                var submitBtn = document.getElementById('testSubmitBtn');
+                if (prevBtn)   prevBtn.disabled = (_curQ === 0);
+                if (nextBtn)   nextBtn.style.display  = (_curQ < _qCount - 1) ? '' : 'none';
+                if (submitBtn) submitBtn.style.display = (_curQ === _qCount - 1) ? '' : 'none';
+
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            window.testNavQ = function(dir) { window.goToTestQ(_curQ + dir); };
+
+            // ── Confirm Submit ────────────────────────────────────────
+            window.confirmSubmitTest = function() {
+                var unanswered = _qCount - Object.keys(_answers).length;
+                if (unanswered > 0) {
+                    if (!confirm('You have ' + unanswered + ' unanswered question(s). Do you want to submit now?')) return;
+                }
+                submitTest();
+            };
+
+            // ── Submit & Grade ────────────────────────────────────────
+            function submitTest() {
+                if (_submitted) return;
+                _submitted = true;
+                if (_timer) clearInterval(_timer);
+
+                var correct = 0, wrong = 0, skipped = 0;
+                var totalPoints = 0, earnedPoints = 0;
+
+                var reviewRows = _questions.map(function(q, qi) {
+                    var chosen    = _answers[qi];
+                    var isCorrect = (chosen !== undefined && chosen === q.correctOpt);
+                    var pts       = q.points || 1;
+                    totalPoints  += pts;
+                    if (chosen === undefined) { skipped++; }
+                    else if (isCorrect)       { correct++; earnedPoints += pts; }
+                    else                      { wrong++; }
+
+                    var chosenLabel = (chosen !== undefined && q.opts && q.opts[chosen]) ? _letters[chosen] + '. ' + q.opts[chosen] : '—';
+                    var correctLabel = (q.opts && q.opts[q.correctOpt]) ? _letters[q.correctOpt] + '. ' + q.opts[q.correctOpt] : '—';
+
+                    return '<div class="trm-q-row">' +
+                        '<div class="trm-q-mark">' + (isCorrect ? '✅' : (chosen === undefined ? '⬜' : '❌')) + '</div>' +
+                        '<div class="trm-q-info">' +
+                            '<div class="trm-q-text">' + (qi + 1) + '. ' + (q.q || '').slice(0, 80) + (q.q && q.q.length > 80 ? '…' : '') + '</div>' +
+                            '<div class="trm-q-answer">' +
+                                '<span style="color:' + (isCorrect ? '#16a34a' : '#dc2626') + ';">Your answer: ' + chosenLabel + '</span>' +
+                                (!isCorrect ? ' &nbsp;|&nbsp; <span style="color:#16a34a;">Correct answer: ' + correctLabel + '</span>' : '') +
+                            '</div>' +
+                        '</div></div>';
+                }).join('');
+
+                var pct   = totalPoints > 0 ? Math.round(earnedPoints / totalPoints * 100) : 0;
+                var pass  = pct >= ((_quiz && _quiz.averageGrade) || 50);
+                var emoji = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '👍' : '💪';
+
+                // عرض النتيجة
+                document.getElementById('trmIcon').textContent  = emoji;
+                document.getElementById('trmTitle').textContent = pass ? 'Great Job! Quiz Passed' : 'Keep Practicing!';
+                document.getElementById('trmScore').textContent = earnedPoints + ' / ' + totalPoints;
+                document.getElementById('trmMeta').innerHTML =
+                    '<span class="trm-meta-item trm-correct">✅ ' + correct + ' Correct</span>' +
+                    '<span class="trm-meta-item trm-wrong">❌ ' + wrong + ' Wrong</span>' +
+                    (skipped > 0 ? '<span class="trm-meta-item" style="background:#f1f5f9;color:#64748b;">⬜ ' + skipped + ' Skipped</span>' : '') +
+                    '<span class="trm-meta-item trm-pct">' + pct + '%</span>';
+                document.getElementById('trmReview').innerHTML = reviewRows;
+                document.getElementById('testResultOverlay').style.display = 'flex';
+
+                // quiz-gate: show pass/fail unlock message
+                var _passRate = (_quiz && (_quiz.averageGrade || _quiz.passingGrade)) || 50;
+                var _gateEl = document.getElementById('trmGateMsg');
+                if (_gateEl) {
+                    _gateEl.style.display = 'block';
+                    if (pass) {
+                        _gateEl.style.background = '#DCFCE7';
+                        _gateEl.style.color = '#15803D';
+                        _gateEl.style.border = '1px solid #86EFAC';
+                        _gateEl.innerHTML = '&#10003; Passed! The next lesson is now unlocked.';
+                    } else {
+                        _gateEl.style.background = '#FEF2F2';
+                        _gateEl.style.color = '#DC2626';
+                        _gateEl.style.border = '1px solid #FECACA';
+                        _gateEl.innerHTML = '&#128274; Score ' + pct + '% &mdash; need ' + _passRate + '% to unlock the next lesson. Please retake the quiz.';
+                    }
+                }
+
+                // حفظ النتيجة — بنفس أسماء الحقول اللي شاشة "نتائج الاختبار"
+                // في الداشبورد بتتوقعها فعليًا (studentName/studentId/totalPoints/
+                // studentCode/elapsedTime)، + نفس الأسماء القديمة (userId/userName/
+                // total) اللي باقي كود الطالب هنا بيعتمد عليها — نفس القيمة بس
+                // باسمين، بدون ما نلمس أي كود تاني في الداشبورد أو في الطالب.
+                if (window.saveQuizAttempt) {
+                    var _uid = _userId || (window.currentUser && window.currentUser.id) || 'guest';
+                    var _uname = (currentUser && currentUser.name) || (window.currentUser && window.currentUser.name) || '—';
+                    var _ucode = (currentUser && (currentUser.code || currentUser.qrCode || currentUser.studentCode))
+                        || (window.currentUser && (window.currentUser.code || window.currentUser.qrCode)) || _uid;
+                    var attempt = {
+                        userId:      _uid,
+                        studentId:   _uid,
+                        userName:    _uname,
+                        studentName: _uname,
+                        studentCode: _ucode,
+                        quizId:      quizId,
+                        courseId:    courseId,
+                        lessonId:    lessonId,
+                        quizTitle:   (_quiz && _quiz.title) || '—',
+                        score:       earnedPoints,
+                        total:       totalPoints,
+                        totalPoints: totalPoints,
+                        correct:     correct,
+                        wrong:       wrong,
+                        skipped:     skipped,
+                        percentage:  pct,
+                        passed:      pass,
+                        answers:     _answers,
+                        startedAt:   new Date(_startedAtMs).toISOString(),
+                        submittedAt: new Date().toISOString(),
+                        elapsedTime: Math.max(0, Math.floor((Date.now() - _startedAtMs) / 1000))
+                    };
+                    window.saveQuizAttempt(attempt);
+                }
+
+                // تعديل الخيارات لإظهار الصح والخطأ
+                _questions.forEach(function(q, qi) {
+                    var wrap = document.getElementById('testOpts_' + qi);
+                    if (!wrap) return;
+                    wrap.querySelectorAll('.test-option').forEach(function(btn, oi) {
+                        btn.disabled = true;
+                        if (oi === q.correctOpt) btn.classList.add('correct');
+                        else if (_answers[qi] === oi) btn.classList.add('wrong');
+                    });
+                });
+            }
+
+            // ── Retake ────────────────────────────────────────────────
+            window.retakeTest = function(qid, cid, lid) {
+                navigate('test/' + [qid,cid,lid].filter(Boolean).join('/'));
+            };
+
+            // ── بدء/استئناف المحاولة من Backend (Firebase) ──────────────
+            // ده اللي بيحدد الوقت المتبقي الحقيقي (مش quiz.time كاملة كل
+            // مرة) ولو الطالب حل الاختبار فعلاً من قبل (حتى من جهاز تاني)
+            var _startedAtMs = Date.now();
+            var _userId = (currentUser && currentUser.id) || (window.currentUser && window.currentUser.id) || null;
+
+            function startTimerAndShowQuestions() {
+                if (_timeLeft > 0) {
+                    var m0 = Math.floor(_timeLeft / 60), s0 = _timeLeft % 60;
+                    var elDisp = document.getElementById('testTimerDisplay');
+                    if (elDisp) elDisp.textContent = m0 + ':' + (s0 < 10 ? '0' : '') + s0;
+
+                    _timer = setInterval(function() {
+                        _timeLeft--;
+                        var m = Math.floor(_timeLeft / 60);
+                        var s = _timeLeft % 60;
+                        var el = document.getElementById('testTimerDisplay');
+                        if (el) el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+                        var badge = document.getElementById('testTimerBadge');
+                        if (badge) badge.classList.toggle('warning', _timeLeft <= 60);
+                        if (_timeLeft <= 0) {
+                            clearInterval(_timer);
+                            if (!_submitted) submitTest();
+                        }
+                    }, 1000);
+                }
+                window.goToTestQ(0);
+                updateAnsweredCount();
+                updateProgress();
+            }
+
+            if (_userId && typeof window.beginOrResumeQuizAttempt === 'function') {
+                window.beginOrResumeQuizAttempt(_userId, quizId, courseId, lessonId, (_quiz && _quiz.time) ? _quiz.time * 60 : 0)
+                    .then(function(result) {
+                        if (result.already) {
+                            // اتحل بالفعل (من أي جهاز) — بدّل المحتوى بصفحة "شاهد نتيجتك" فورًا
+                            var appContent = document.getElementById('app-content');
+                            if (appContent) {
+                                appContent.innerHTML = renderAlreadyPassedQuizPage(_quiz, result.attempt, courseId, lessonId,
+                                    (courseId && lessonId ? 'lesson/' + courseId + '/' + lessonId : (courseId ? 'license/' + courseId : 'courses')));
+                            }
+                            return;
+                        }
+                        _startedAtMs = result.startedAtMs || _startedAtMs;
+                        if (result.remainingSeconds !== null && result.remainingSeconds !== undefined) {
+                            _timeLeft = result.remainingSeconds;
+                        }
+                        if (_timeLeft <= 0 && (_quiz && _quiz.time)) {
+                            // الوقت خلص فعلاً (مثلاً الطالب سايب الصفحة فاتحة) — سلّم فورًا
+                            startTimerAndShowQuestions();
+                            submitTest();
+                            return;
+                        }
+                        startTimerAndShowQuestions();
+                    })
+                    .catch(function() { startTimerAndShowQuestions(); });
+            } else {
+                // لا يوجد مستخدم/Firebase متاح — نفس السلوك القديم بدون تغيير
+                startTimerAndShowQuestions();
+            }
+        })();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -2624,7 +3461,7 @@
                     <input type="hidden" id="lessonModalCourseId" value="${courseId}">
                     <div class="form-group">
                         <label class="form-label">Lesson Title <span style="color:var(--danger)">*</span></label>
-                        <input type="text" class="form-input" id="lessonModalName" placeholder="e.g. Introduction to Kinematics" maxlength="120">
+                        <input type="text" class="form-input" id="lessonModalName" placeholder="e.g. Introduction to Cell Biology" maxlength="120">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Lesson Description</label>
@@ -2929,7 +3766,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Student Phone Number</label>
-                                <input type="tel" class="form-input phone-input" id="profilePhone" readonly title="Your phone number is your login ID" value="${user.phone || ''}" dir="ltr" maxlength="11" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11)">
+                                <input type="tel" class="form-input phone-input" id="profilePhone" value="${user.phone || ''}" dir="ltr" maxlength="11" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 11)">
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Parent's Phone Number</label>
@@ -2992,11 +3829,11 @@
                 <div class="auth-visual-mesh"></div>
                 <div class="auth-visual-content">
                     <div class="auth-teacher-badge">
-                        <img src="teacher-new.jpg?v=20260923" alt="الدكتور محمد عبد الله — عميد الفيزياء" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
+                        <img src="teacher-new.jpg?v=20260912" alt="Mr. Islam Abdelwahed" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
                         <div class="auth-t-info">
                             <div class="auth-t-crown">👑</div>
-                            <div class="auth-t-name" dir="rtl">الدكتور محمد عبد الله</div>
-                            <div class="auth-t-sub" dir="rtl">عميد الفيزياء ⚛️</div>
+                            <div class="auth-t-name">Mr. Islam Abdelwahed</div>
+                            <div class="auth-t-sub">Senior Biology Expert &amp; Educator 🔬</div>
                         </div>
                     </div>
 
@@ -3020,7 +3857,7 @@
                 <div class="auth-form-card">
                     <div class="auth-card-header">
                         <a href="#home" class="auth-logo-badge">
-                            <span class="auth-logo-icon">${physicsLogoMark('au', 'auth-logo-svg')}</span>
+                            <span class="auth-logo-icon">🔬</span>
                             <span class="auth-logo-text">${SITE_CONFIG.name}</span>
                         </a>
                         <h1 class="auth-heading">Sign In</h1>
@@ -3056,7 +3893,7 @@
 
                         <div class="form-options-row">
                             <label class="remember-label">
-                                <input type="checkbox" checked class="custom-checkbox" id="loginRemember">
+                                <input type="checkbox" checked class="custom-checkbox">
                                 <span>Remember me on this device</span>
                             </label>
                         </div>
@@ -3092,21 +3929,21 @@
                 <div class="auth-visual-mesh"></div>
                 <div class="auth-visual-content">
                     <div class="auth-teacher-badge">
-                        <img src="teacher-new.jpg?v=20260923" alt="الدكتور محمد عبد الله — عميد الفيزياء" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
+                        <img src="teacher-new.jpg?v=20260912" alt="Mr. Islam Abdelwahed" class="auth-t-img" onerror="this.src='صورة المدرس الجديد.jpeg'">
                         <div class="auth-t-info">
                             <div class="auth-t-crown">👑</div>
-                            <div class="auth-t-name" dir="rtl">الدكتور محمد عبد الله</div>
-                            <div class="auth-t-sub" dir="rtl">عميد الفيزياء ⚛️</div>
+                            <div class="auth-t-name">Mr. Islam Abdelwahed</div>
+                            <div class="auth-t-sub">Senior Biology Expert &amp; Educator 🔬</div>
                         </div>
                     </div>
 
-                    <h2 class="auth-visual-title">Join the Physics Achievers! 🎓</h2>
+                    <h2 class="auth-visual-title">Join the Elite in Biology! 🎓</h2>
                     <p class="auth-visual-desc">Create your free account in seconds and unlock exclusive structured explanations and interactive quizzes.</p>
 
                     <div class="auth-features-list">
                         <div class="auth-feat-item">
                             <span class="auth-feat-icon">✨</span>
-                            <span>Clear, structured step-by-step physics explanations</span>
+                            <span>Clear, structured step-by-step mathematical explanations</span>
                         </div>
                         <div class="auth-feat-item">
                             <span class="auth-feat-icon">🎯</span>
@@ -3124,7 +3961,7 @@
                 <div class="auth-form-card auth-register-card">
                     <div class="auth-card-header">
                         <a href="#home" class="auth-logo-badge">
-                            <span class="auth-logo-icon">${physicsLogoMark('au', 'auth-logo-svg')}</span>
+                            <span class="auth-logo-icon">🔬</span>
                             <span class="auth-logo-text">${SITE_CONFIG.name}</span>
                         </a>
                         <h1 class="auth-heading">Create Account</h1>
@@ -3626,11 +4463,53 @@
 
     async function enrollStudentInCourse(courseId) {
         const cid = String(courseId);
-        if (!currentUser || !window.AuthService) return;
-        // التسجيل في الكورس يُكتب على ملف الطالب الحالي فقط في قاعدة البيانات (users/{uid})
-        const r = await window.AuthService.enroll(cid);
-        if (!r.ok) { console.warn('[enroll] failed:', r.message || r.code); return; }
-        loadSession();
+        if (!currentUser) return;
+
+        if (!Array.isArray(currentUser.enrolledCourses)) currentUser.enrolledCourses = [];
+        if (!currentUser.enrolledCourses.some(id => String(id) === cid)) {
+            currentUser.enrolledCourses.push(cid);
+        }
+
+        saveSession(currentUser);
+
+        // تحديث في iraqiplatform_users
+        const users = getUsers();
+        const idx = users.findIndex(u => String(u.id) === String(currentUser.id) || (currentUser.phone && u.phone === currentUser.phone));
+        if (idx !== -1) {
+            if (!Array.isArray(users[idx].enrolledCourses)) users[idx].enrolledCourses = [];
+            if (!users[idx].enrolledCourses.some(id => String(id) === cid)) {
+                users[idx].enrolledCourses.push(cid);
+            }
+            saveUsers(users);
+        }
+
+        // تحديث في alsaqr_users
+        try {
+            const dashUsers = JSON.parse(localStorage.getItem('alsaqr_users') || '[]');
+            const dIdx = dashUsers.findIndex(u => String(u.id) === String(currentUser.id) || (currentUser.phone && u.phone === currentUser.phone));
+            if (dIdx !== -1) {
+                if (!Array.isArray(dashUsers[dIdx].enrolledCourses)) dashUsers[dIdx].enrolledCourses = [];
+                if (!dashUsers[dIdx].enrolledCourses.some(id => String(id) === cid)) {
+                    dashUsers[dIdx].enrolledCourses.push(cid);
+                }
+                localStorage.setItem('alsaqr_users', JSON.stringify(dashUsers));
+            }
+        } catch (e) { }
+
+        // تحديث في Firebase Firestore Cloud
+        const db = (window.FirebaseService && typeof window.FirebaseService.getDb === 'function')
+            ? window.FirebaseService.getDb()
+            : (window.db || (typeof firebase !== 'undefined' && firebase.firestore ? firebase.firestore() : null));
+
+        if (db && currentUser.id) {
+            try {
+                await db.collection('users').doc(String(currentUser.id)).set({
+                    enrolledCourses: firebase.firestore.FieldValue.arrayUnion(cid)
+                }, { merge: true });
+            } catch (e) {
+                console.warn('[Enroll Firebase Sync notice]:', e.message);
+            }
+        }
     }
 
     // Helper: الانتقال التلقائي للدرس الأول بعد التفعيل
@@ -3919,9 +4798,9 @@
             text.style.color = '#ef4444';
         } else if (len < 6) {
             fill.style.width = (len / 6 * 100) + '%';
-            fill.style.background = '#A054C6';
+            fill.style.background = '#f59e0b';
             text.textContent = len + '/6 characters — enter at least ' + (6 - len) + ' more character(s)';
-            text.style.color = '#A054C6';
+            text.style.color = '#f59e0b';
         } else if (len < 10) {
             fill.style.width = '70%';
             fill.style.background = '#10b981';
@@ -3929,9 +4808,9 @@
             text.style.color = '#10b981';
         } else {
             fill.style.width = '100%';
-            fill.style.background = '#672fc8';
+            fill.style.background = '#0ea5e9';
             text.textContent = '💪 Strong password (' + len + ' characters)';
-            text.style.color = '#672fc8';
+            text.style.color = '#0ea5e9';
         }
     };
 
@@ -3978,8 +4857,7 @@
         let phone = phoneInput ? phoneInput.value.trim().replace(/[^0-9]/g, '') : '';
         const password = document.getElementById('loginPassword') ? document.getElementById('loginPassword').value : '';
         const errorMsg = document.getElementById('loginErrorMsg');
-        const submitBtn = document.getElementById('loginSubmitBtn');
-        const remember = document.getElementById('loginRemember');
+        const loginBtn = document.getElementById('loginSubmitBtn');
 
         function showError(msg) {
             if (errorMsg) {
@@ -4001,27 +4879,32 @@
             if (phoneInput) { phoneInput.classList.add('input-error'); phoneInput.focus(); }
             return;
         }
-        if (phoneInput) phoneInput.classList.remove('input-error');
 
-        if (!window.AuthService) { showError('Authentication service is unavailable. Please reload the page.'); return; }
+        // ── خطوة 1: هل الحساب موجود؟ (قاعدة البيانات هي المرجع الأساسي) ──
+        var _loginBtnOriginalHtml = loginBtn ? loginBtn.innerHTML : '';
+        if (loginBtn) { loginBtn.disabled = true; loginBtn.innerHTML = '<span>Verifying…</span>'; }
+        let account;
+        try {
+            account = await findAccountByPhone(phone);
+        } finally {
+            if (loginBtn) { loginBtn.disabled = false; loginBtn.innerHTML = _loginBtnOriginalHtml; }
+        }
 
-        // التحقق كله من قاعدة البيانات/خدمة المصادقة: 1) الرقم مسجّل؟ 2) كلمة المرور؟ 3) إنشاء الجلسة
-        if (submitBtn) submitBtn.disabled = true;
-        let res;
-        try { res = await window.AuthService.login(phone, password, { remember: remember ? remember.checked : true }); }
-        finally { if (submitBtn) submitBtn.disabled = false; }
-
-        if (!res || !res.ok) {
-            showError((res && res.message) || window.AuthService.message('unknown'));
-            const pw = document.getElementById('loginPassword');
-            if (res && res.code === 'wrong_password' && pw) { pw.value = ''; pw.focus(); }
-            if (res && res.code === 'phone_not_registered' && phoneInput) { phoneInput.classList.add('input-error'); phoneInput.focus(); }
+        if (!account) {
+            showError('This phone number is not registered. Please create an account first.');
             return;
         }
 
-        loadSession();
+        // ── خطوة 2: هل كلمة المرور صحيحة؟ (منفصلة تمامًا عن خطوة وجود الحساب) ──
+        if (!verifyAccountPassword(account, password)) {
+            showError('Incorrect password. Please try again.');
+            return;
+        }
+
+        // ── خطوة 3: إنشاء جلسة الدخول ──────────────────────────────────
+        saveSession(account);
         refreshLayout();
-        showToast('Welcome back, ' + currentUser.name + '! Signed in successfully 🎉', 'success');
+        showToast('Welcome back, ' + account.name + '! Signed in successfully 🎉', 'success');
         const redirect = sessionStorage.getItem('iraqiplatform_redirect');
         if (redirect) {
             sessionStorage.removeItem('iraqiplatform_redirect');
@@ -4093,23 +4976,38 @@
             return;
         }
 
-        if (!window.AuthService) { showError('Authentication service is unavailable. Please reload the page.'); return; }
-        const gradeLabel = (grade === '2nd Year Secondary' || grade === 'ثانية ثانوي') && section ? grade + ' — ' + section : grade;
-        const regBtn = document.getElementById('registerSubmitBtn');
-        if (regBtn) regBtn.disabled = true;
-        let regRes;
-        try {
-            // رقم مسجّل من قبل؟ يُفحص من قاعدة البيانات — ثم يُنشأ الحساب على خدمة المصادقة (كلمة المرور لا تُخزَّن في المتصفح ولا في Firestore)
-            regRes = await window.AuthService.register({
-                name: fullName, phone: phone, parentPhone: parentPhone, grade: gradeLabel,
-                section: section || '', governorate: governorate, password: password
-            });
-        } finally { if (regBtn) regBtn.disabled = false; }
-        if (!regRes || !regRes.ok) {
-            showError((regRes && regRes.message) || window.AuthService.message('unknown'));
+        // ── نفس دالة التحقق المستخدمة في تسجيل الدخول بالظبط — قاعدة
+        //    البيانات هي المرجع، عشان طالب ما يقدرش يعمل حساب مكرر لو
+        //    رقمه مسجّل بالفعل من جهاز تاني ────────────────────────────
+        const existingPhone = await findAccountByPhone(phone);
+
+        if (existingPhone) {
+            showError('This student phone number is already registered. Please sign in instead.');
             return;
         }
-        loadSession();
+
+        const users = getUsers();
+        const gradeLabel = (grade === '2nd Year Secondary' || grade === 'ثانية ثانوي') && section ? grade + ' — ' + section : grade;
+        const newUser = {
+            id: 'user_' + Date.now(),
+            name: fullName,
+            email: '',
+            phone: phone,
+            parentPhone: parentPhone,
+            grade: gradeLabel,
+            section: section || '',
+            governorate: governorate,
+            password: password,
+            enrolledCourses: [],
+            completedLessons: 0,
+            avgScore: 0,
+            streak: 1,
+            createdAt: new Date().toISOString()
+        };
+
+        users.push(newUser);
+        saveUsers(users);
+        saveSession(newUser);
         refreshLayout();
         showToast('Welcome, ' + fullName + '! Account created successfully 🎉', 'success');
         const regRedirect = sessionStorage.getItem('iraqiplatform_redirect');
@@ -4121,8 +5019,7 @@
         }
     };
 
-    window.handleLogout = async function () {
-        if (window.AuthService) await window.AuthService.logout();
+    window.handleLogout = function () {
         clearSession();
         refreshLayout();
         navigate('home');
@@ -4146,34 +5043,34 @@
             showToast('Parent phone must be 11 digits starting with 01', 'error');
             return;
         }
-        // رقم الهاتف هو معرّف الدخول: لا يُغيَّر من المتصفح (يتم عبر الدعم)
-        if (phone && currentUser.phone && phone !== currentUser.phone) {
-            showToast('Your phone number is your login ID and cannot be changed here. Please contact support.', 'error');
-            const pi = document.getElementById('profilePhone'); if (pi) pi.value = currentUser.phone;
-            return;
-        }
-        window.AuthService.updateProfile({ name: name, parentPhone: parentPhone, grade: grade, governorate: governorate }).then(function (r) {
-            if (!r.ok) { showToast(r.message || 'Could not save your profile. Please try again.', 'error'); return; }
-            loadSession();
-            showToast('Profile updated successfully! ✅', 'success');
-            refreshLayout();
-        });
+        currentUser.name = name;
+        currentUser.phone = phone;
+        currentUser.parentPhone = parentPhone;
+        currentUser.grade = grade;
+        currentUser.governorate = governorate;
+        saveSession(currentUser);
+        const users = getUsers();
+        const idx = users.findIndex(u => u.id === currentUser.id);
+        if (idx !== -1) { users[idx] = currentUser; saveUsers(users); }
+        showToast('Profile updated successfully! ✅', 'success');
+        refreshLayout();
     };
 
     // Password change
-    window.changePassword = async function () {
-        if (!currentUser || !window.AuthService) return;
+    window.changePassword = function () {
+        if (!currentUser) return;
         const current = document.getElementById('currentPasswordInput') ? document.getElementById('currentPasswordInput').value : '';
         const newPw = document.getElementById('newPasswordInput') ? document.getElementById('newPasswordInput').value : '';
         const confirm = document.getElementById('confirmPasswordInput') ? document.getElementById('confirmPasswordInput').value : '';
-        if (!current) { showToast('Please enter your current password', 'error'); return; }
+        if (current !== currentUser.password) { showToast('Current password is incorrect', 'error'); return; }
         if (!validatePassword(newPw)) { showToast('New password must be at least 6 alphanumeric characters', 'error'); return; }
         if (newPw !== confirm) { showToast('New password and confirmation do not match', 'error'); return; }
-        // التحقق من كلمة المرور الحالية يتم على خدمة المصادقة (إعادة مصادقة) وليس بمقارنة نص محلي
-        const r = await window.AuthService.changePassword(current, newPw);
-        if (!r.ok) { showToast(r.code === 'wrong_password' ? 'Current password is incorrect' : (r.message || 'Could not change the password'), 'error'); return; }
+        currentUser.password = newPw;
+        saveSession(currentUser);
+        const users = getUsers();
+        const idx = users.findIndex(u => u.id === currentUser.id);
+        if (idx !== -1) { users[idx] = currentUser; saveUsers(users); }
         showToast('Password changed successfully! 🔒', 'success');
-        ['currentPasswordInput', 'newPasswordInput', 'confirmPasswordInput'].forEach(function (id) { const el = document.getElementById(id); if (el) el.value = ''; });
     };
 
     // Navigate helper
@@ -4335,7 +5232,27 @@
             } catch (e) { console.warn('[initLessonPage] auto-refresh:', e.message); }
         }, 1500);
     }
-    function initLicensePage() { }
+    function initLicensePage() {
+        // ── تأكيد حي من Firebase إن حالة تفعيل الكورسات محدّثة، بدل ما
+        //    نعتمد بس على النسخة المخزّنة في جلسة تسجيل الدخول الحالية —
+        //    وده اللي بيحل مشكلة "يطلب كود تفعيل تاني" لو الطالب فعّل
+        //    الكورس من جهاز/متصفح مختلف. Firebase هو المرجع الحقيقي دايمًا.
+        if (!window.db || !currentUser || !currentUser.id) return;
+        window.db.collection('users').doc(String(currentUser.id)).get().then(function (doc) {
+            if (!doc.exists) return;
+            var remote = doc.data() || {};
+            var remoteCourses = Array.isArray(remote.enrolledCourses) ? remote.enrolledCourses.map(String) : [];
+            var localCourses = Array.isArray(currentUser.enrolledCourses) ? currentUser.enrolledCourses.map(String) : [];
+            var hasNew = remoteCourses.some(function (id) { return localCourses.indexOf(id) === -1; });
+            if (hasNew) {
+                currentUser.enrolledCourses = remoteCourses;
+                saveSession(currentUser);
+                if (typeof window.handleRoute === 'function') window.handleRoute();
+            }
+        }).catch(function (e) {
+            console.warn('[License] Firebase enrollment check failed:', e.message);
+        });
+    }
 
     function initAdminCoursePage() {
         // لا شيء إضافي حالياً — الـ drag & drop مستقبلي
@@ -4612,7 +5529,15 @@
         // Apply theme first (prevents flash of wrong theme)
         initTheme();
 
-        // الجلسة لا تُقرأ من localStorage: تُستعاد من Firebase Auth ثم من ملف المستخدم في قاعدة البيانات (انظر boot أدناه)
+        // Load session from localStorage first
+        loadSession();
+
+        // تأكيد صلاحية الجلسة المستعادة من قاعدة البيانات في الخلفية —
+        // بدون تأخير عرض الواجهة (نفس التوقيت اللي كان مستخدم أصلاً
+        // لمزامنة الأكواد تحت)
+        setTimeout(function () {
+            verifySessionInBackground();
+        }, 1500);
 
         // Sync codes from Firebase
         setTimeout(function () {
@@ -4621,30 +5546,42 @@
             });
         }, 2000);
 
-        const boot = function () {
-            loadSession();
-            const container = document.getElementById('app');
-            const html =
-                renderHeader() +
-                '<main id="app-content"></main>' +
-                '<footer class="footer" id="main-footer">' + renderFooter() + '</footer>' +
-                '<div id="modal-container"></div>';
-            if (container) { container.innerHTML = html; } else { document.body.innerHTML = html; }
-            initHeaderScroll();
-            initRouter();
-            // تغيّر الجلسة (خروج/دخول من تبويب آخر أو انتهاء الحساب) يحدّث الواجهة فوراً
-            let lastUid = isLoggedIn && currentUser ? String(currentUser.id) : '';
-            window.addEventListener('authchange', function () {
-                const prevLogged = isLoggedIn, prevUid = lastUid;
-                loadSession();
-                lastUid = isLoggedIn && currentUser ? String(currentUser.id) : '';
-                if (prevLogged !== isLoggedIn || prevUid !== lastUid) {
-                    refreshLayout();
-                    if (!isLoggedIn && prevLogged) { handleRoute(); }
-                }
+        // Bootstrap admin account if it doesn't exist yet
+        const users = getUsers();
+        const adminExists = users.find(u => u.email === ADMIN_EMAIL);
+        if (!adminExists) {
+            users.push({
+                id: 'admin_builtin',
+                name: 'Mr. Islam Abdelwahed',
+                email: ADMIN_EMAIL,
+                phone: '01000000000',
+                grade: 'Admin',
+                password: ADMIN_PASSWORD,
+                enrolledCourses: [],
+                completedLessons: 0,
+                avgScore: 0,
+                streak: 1,
+                createdAt: new Date().toISOString(),
             });
-        };
-        if (window.AuthService) { window.AuthService.ready().then(boot, boot); } else { boot(); }
+            saveUsers(users);
+        }
+
+        // Render layout into #app container
+        const appContainer = document.getElementById('app');
+        const layoutHTML =
+            renderHeader() +
+            '<main id="app-content"></main>' +
+            '<footer class="footer" id="main-footer">' + renderFooter() + '</footer>' +
+            '<div id="modal-container"></div>';
+
+        if (appContainer) {
+            appContainer.innerHTML = layoutHTML;
+        } else {
+            document.body.innerHTML = layoutHTML;
+        }
+
+        initHeaderScroll();
+        initRouter();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -4711,8 +5648,8 @@
             '<div class="reveal" style="max-width:520px;margin:0 auto;text-align:center;background:var(--bg-surface,#fff);border-radius:24px;padding:56px 40px;box-shadow:0 24px 64px rgba(0,0,0,.10);border:1px solid var(--border);">' +
             '<div style="font-size:64px;margin-bottom:20px;">🔐</div>' +
             '<h2 style="font-size:1.6rem;font-weight:900;margin-bottom:12px;">Sign In Required</h2>' +
-            '<div style="background:linear-gradient(135deg,#F5F0FC,#E7DDF7);border:1px solid #AD8DE4;border-radius:14px;padding:16px 20px;margin-bottom:28px;">' +
-            '<p style="margin:0;color:#5627A7;font-size:0.95rem;font-weight:600;">To access course: <span style="color:#1a1227;">' + courseTitle + '</span></p>' +
+            '<div style="background:linear-gradient(135deg,#FFF7ED,#FFEDD5);border:1px solid #67E8F9;border-radius:14px;padding:16px 20px;margin-bottom:28px;">' +
+            '<p style="margin:0;color:#0E7490;font-size:0.95rem;font-weight:600;">To access course: <span style="color:#0f172a;">' + courseTitle + '</span></p>' +
             '</div>' +
             '<p style="color:var(--text-secondary);font-size:0.95rem;margin-bottom:32px;line-height:1.8;">Please sign in or create a free account to continue to your selected course.</p>' +
             '<div style="display:flex;flex-direction:column;gap:12px;">' +
@@ -4746,9 +5683,18 @@
             }
         },
         activateForUser: function (userId, courseId) {
-            // يُنفَّذ فقط على حساب المستخدم الحالي وعبر قاعدة البيانات (AuthService.enroll)
-            if (!isLoggedIn || !currentUser || String(currentUser.id) !== String(userId) || !window.AuthService) return false;
-            window.AuthService.enroll(courseId).then(function () { loadSession(); });
+            var users = getUsers();
+            var idx = users.findIndex(function (u) { return u.id === userId; });
+            if (idx < 0) return false;
+            var enrolled = users[idx].enrolledCourses || [];
+            if (!enrolled.some(function (id) { return String(id) === String(courseId); })) {
+                users[idx].enrolledCourses = enrolled.concat([String(courseId)]);
+                saveUsers(users);
+                if (isLoggedIn && currentUser && currentUser.id === userId) {
+                    currentUser.enrolledCourses = users[idx].enrolledCourses;
+                    saveSession(currentUser);
+                }
+            }
             return true;
         }
     };

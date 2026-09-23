@@ -1,70 +1,48 @@
 // ═══════════════════════════════════════════════════════════════
-// منصة الدكتور محمد عبد الله — عميد الفيزياء — Physics Platform — Data
+// Mr. Islam Abdelwahed — Biology Platform — Data
 // ═══════════════════════════════════════════════════════════════
 
 const SITE_CONFIG = {
-    name: 'منصة الدكتور محمد عبد الله',
-    fullName: 'منصة الدكتور محمد عبد الله — عميد الفيزياء',
-    subtitle: 'عميد الفيزياء',
-    description: 'The premier educational platform for Physics with Dr. Mohamed Abdullah, Dean of Physics — clear explanations, interactive exercises, and comprehensive exams for all grade levels.',
-    teacher: 'الدكتور محمد عبد الله',
+    name: 'الخلية',
+    fullName: 'Al-Khaleya — Mr. Islam Abdelwahed',
+    subtitle: 'أ/ إسلام عبدالواحد',
+    description: 'The premier educational platform for Biology with Mr. Islam Abdelwahed — simplified explanations, interactive exercises, and comprehensive exams for all grade levels.',
+    teacher: 'Mr. Islam Abdelwahed',
     year: 2026,
 };
 
-// ── Brand mark (wave-M inside an orbit) — one source of truth for header / footer / auth ──
-// variant: 'light' (for light & dark headers) | 'dark' (for deep-purple tiles). uid keeps gradient ids unique.
-function physicsLogoMark(uid, cls, variant) {
-    const u = 'pm' + (uid || Math.random().toString(36).slice(2, 6));
-    const inner = variant === 'dark' ? `<defs>
-<linearGradient id="${u}m" x1="10" y1="34" x2="38" y2="14" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D8C4FF"/></linearGradient>
-<linearGradient id="${u}o" x1="3" y1="34" x2="45" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#C9A8FF"/><stop offset="1" stop-color="#8C62DB"/></linearGradient>
-</defs>
-<circle cx="24" cy="24" r="21.4" stroke="url(#${u}o)" stroke-width="1.7" fill="none" opacity="1.0"/>
-<path d="M10 34 C10 24 12 14 17 14 C20.5 14 21 30 24 30 C27 30 27.5 14 31 14 C36 14 38 24 38 34" stroke="url(#${u}m)" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<circle cx="39.9" cy="9.68" r="4.9" fill="#D9B6F5" opacity=".22"/>
-<circle cx="39.9" cy="9.68" r="2.7" fill="#F0DBFF"/>` : `<defs>
-<linearGradient id="${u}m" x1="10" y1="34" x2="38" y2="14" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6A3FBD"/><stop offset="1" stop-color="#A468DA"/></linearGradient>
-<linearGradient id="${u}o" x1="3" y1="34" x2="45" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#B07CE6"/><stop offset="1" stop-color="#6A3FBD"/></linearGradient>
-</defs>
-<circle cx="24" cy="24" r="21.4" stroke="url(#${u}o)" stroke-width="1.7" fill="none" opacity="0.95"/>
-<path d="M10 34 C10 24 12 14 17 14 C20.5 14 21 30 24 30 C27 30 27.5 14 31 14 C36 14 38 24 38 34" stroke="url(#${u}m)" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<circle cx="39.9" cy="9.68" r="4.9" fill="#B47AE6" opacity=".22"/>
-<circle cx="39.9" cy="9.68" r="2.7" fill="#B47AE6"/>`;
-    return `<svg class="${cls || ''}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${inner}</svg>`;
-}
-
 const QUIZ_DATA = {
-    title: 'Unit 1 Exam — Mechanics',
+    title: 'Unit 1 Exam — Cell Biology',
     questions: [
         {
             id: 'q1',
-            text: 'What is the SI unit of force ?',
-            options: ['Joule', 'Newton', 'Watt', 'Pascal'],
+            text: 'What is the basic structural and functional unit of all living organisms?',
+            options: ['Tissue', 'Cell', 'Organ', 'Organelle'],
             correct: 1
         },
         {
             id: 'q2',
-            text: 'A car accelerates uniformly from rest at 3 m/s². What is its speed after 4 s ?',
-            options: ['7 m/s', '9 m/s', '12 m/s', '16 m/s'],
+            text: 'Which organelle is responsible for producing energy (ATP) in the cell?',
+            options: ['Nucleus', 'Ribosome', 'Mitochondrion', 'Golgi Apparatus'],
             correct: 2
         },
         {
             id: 'q3',
-            text: 'Which law of motion is expressed by the equation F = ma ?',
-            options: ['Newton\'s first law', 'Newton\'s second law', 'Newton\'s third law', 'Law of universal gravitation'],
-            correct: 1
+            text: 'Which molecule carries the genetic information in most living organisms?',
+            options: ['RNA', 'Protein', 'DNA', 'Lipid'],
+            correct: 2
         },
         {
             id: 'q4',
-            text: 'A resistor of 4 Ω is connected to a 12 V source. What is the current through it ?',
-            options: ['3 A', '8 A', '16 A', '48 A'],
-            correct: 0
+            text: 'Which of the following gases is released by plants during photosynthesis?',
+            options: ['Carbon dioxide', 'Nitrogen', 'Oxygen', 'Hydrogen'],
+            correct: 2
         },
         {
             id: 'q5',
-            text: 'Which of the following quantities is a vector ?',
-            options: ['Speed', 'Mass', 'Velocity', 'Energy'],
-            correct: 2
+            text: 'Which type of blood cells is mainly responsible for fighting infection?',
+            options: ['Red blood cells', 'White blood cells', 'Platelets', 'Plasma cells'],
+            correct: 1
         }
     ]
 };
@@ -73,14 +51,14 @@ const TESTIMONIALS_DATA = [
     {
         name: 'Ahmed Mohamed',
         initials: 'AM',
-        text: 'The explanations are clear and easy to understand. The exams help me truly gauge my level. I got the highest score in Physics thanks to this platform.',
+        text: 'The explanations are clear and easy to understand. The exams help me truly gauge my level. I got the highest score in Biology thanks to this platform.',
         rating: 5,
         grade: '3rd Year Secondary'
     },
     {
         name: 'Fatma Ali',
         initials: 'FA',
-        text: 'This platform completely changed my view of Physics. I used to hate the subject, and now it\'s one of my favourites!',
+        text: 'This platform completely changed my view of Biology. I used to hate the subject, and now it\'s one of my favourites!',
         rating: 5,
         grade: '1st Year Secondary'
     },
@@ -101,7 +79,7 @@ const TESTIMONIALS_DATA = [
     {
         name: 'Yasmine Khaled',
         initials: 'YK',
-        text: 'The best physics platform I have used. The interactive exams are outstanding and prepare me well for actual exams.',
+        text: 'The best biology platform I have used. The interactive exams are outstanding and prepare me well for actual exams.',
         rating: 5,
         grade: '3rd Year Secondary'
     },
@@ -118,13 +96,13 @@ const FEATURES_DATA = [
     {
         icon: '💡',
         title: 'Conceptual & Simplified Explanations',
-        description: 'Step-by-step explanations from the fundamentals, clarifying physical concepts with practical examples — no blind memorisation.',
+        description: 'Step-by-step explanations from the fundamentals, clarifying biological concepts with practical examples — no blind memorisation.',
         colorClass: 'green'
     },
     {
         icon: '📚',
         title: 'Full Coverage of External Textbooks',
-        description: 'Comprehensive coverage of external textbook exercises and the most challenging questions from past ministry and exam papers.',
+        description: 'Comprehensive coverage of the official textbook exercises and the most challenging questions from past ministry and exam papers.',
         colorClass: 'yellow'
     },
     {
@@ -136,7 +114,7 @@ const FEATURES_DATA = [
     {
         icon: '📄',
         title: 'Exclusive PDF Notes & Summaries',
-        description: 'Colour-coded notes summarising all laws and formulas, plus mind maps for every lesson — ready to download and print.',
+        description: 'Colour-coded notes summarising every classification, diagram and process, plus mind maps for every lesson — ready to download and print.',
         colorClass: 'green'
     },
     {
@@ -157,11 +135,11 @@ const STAGES_DATA = [
     {
         id: 'stage-3sec',
         title: '3rd Year Secondary',
-        subtitle: 'Physics — Thanaweya Amma',
+        subtitle: 'Scientific Biology',
         gradeTag: 'تالتة ثانوي',
         icon: '🎯',
         description: 'Complete curriculum with exam night revisions, ministry question banks, and booklet model exams.',
-        tags: ['Current Electricity', 'Magnetism', 'Modern Physics', 'Semiconductors']
+        tags: ['Genetics & Evolution', 'Human Physiology', 'Ecology & Environment', 'Immunology']
     },
     {
         id: 'stage-2sec',
@@ -169,26 +147,26 @@ const STAGES_DATA = [
         subtitle: 'Scientific & Literary',
         gradeTag: 'تانية ثانوي',
         icon: '📊',
-        description: 'Detailed explanation of mechanics, heat and thermodynamics, waves, and optics.',
-        tags: ['Mechanics', 'Thermodynamics', 'Waves', 'Optics']
+        description: 'Detailed explanation of cell biology, microbiology, plant biology, and animal diversity.',
+        tags: ['Cell Biology', 'Microbiology', 'Plant Biology', 'Animal Diversity']
     },
     {
         id: 'stage-1sec',
         title: '1st Year Secondary',
         subtitle: 'General & Al-Azhar',
         gradeTag: 'أولى ثانوي',
-        icon: '⚛️',
-        description: 'Solid foundation for secondary school physics in measurement, motion, forces, and energy.',
-        tags: ['Measurement', 'Kinematics', 'Dynamics', 'Work & Energy']
+        icon: '🧬',
+        description: 'Solid foundation for secondary school biology — cell structure, classification, nutrition, and reproduction.',
+        tags: ['Cell Structure', 'Classification', 'Nutrition', 'Reproduction']
     },
     {
         id: 'stage-1prep',
         title: '1st Year Preparatory',
         subtitle: 'Preparatory Stage',
         gradeTag: 'أولى إعدادي',
-        icon: '💡',
-        description: 'The start of excellence in preparatory stage — matter, motion, and the first laws of physics.',
-        tags: ['Matter & Density', 'Motion', 'Forces', 'Energy']
+        icon: '🌱',
+        description: 'The start of excellence in preparatory stage — living organisms, cells, and plant life.',
+        tags: ['Living Organisms', 'Cells & Tissues', 'Nutrition', 'Plant Life']
     },
     {
         id: 'stage-2prep',
@@ -196,17 +174,17 @@ const STAGES_DATA = [
         subtitle: 'Preparatory Stage',
         gradeTag: 'تانية إعدادي',
         icon: '📊',
-        description: 'Strong foundation in heat, light, sound, and simple machines.',
-        tags: ['Heat', 'Light', 'Sound', 'Simple Machines']
+        description: 'Strong foundation in human body systems, respiration, circulation, and healthy living.',
+        tags: ['Human Body Systems', 'Respiration', 'Circulation', 'Health & Disease']
     },
     {
         id: 'stage-3prep',
         title: '3rd Year Preparatory',
         subtitle: 'Preparatory Certificate',
         gradeTag: 'تالتة إعدادي',
-        icon: '🔭',
+        icon: '🔬',
         description: 'In-depth explanation of preparatory curriculum ensuring full marks and qualifying for secondary.',
-        tags: ['Electricity', 'Magnetism', 'Light & Lenses', 'Exercises']
+        tags: ['Genetics Basics', 'Ecosystems', 'Reproduction', 'Exercises']
     },
     {
         id: 'stage-free',
@@ -214,8 +192,8 @@ const STAGES_DATA = [
         subtitle: 'Available to Everyone 🎁',
         gradeTag: 'مجاني',
         icon: '🎁',
-        description: '100% free introductory & foundation course to experience the teaching method and master physics essentials.',
-        tags: ['Units & Measurement', 'Motion Basics', 'Forces & Energy', 'Platform Gift']
+        description: '100% free introductory & foundation course to experience the teaching method and master biology essentials.',
+        tags: ['Cell Basics', 'Biology Vocabulary', 'Study Skills', 'Platform Gift']
     }
 ];
 
@@ -226,7 +204,7 @@ const FAQ_DATA = [
     },
     {
         q: 'What is the activation code and how do I get it?',
-        a: 'The activation code is a unique code used to unlock a paid course on the platform for life. You can obtain it from Dr. Mohamed Abdullah\'s centre or by contacting the technical support team directly via WhatsApp.'
+        a: 'The activation code is a unique code used to unlock a paid course on the platform for life. You can obtain it from Mr. Islam Abdelwahed\'s centre or by contacting the technical support team directly via WhatsApp.'
     },
     {
         q: 'Are the videos and notes available throughout the academic term?',
@@ -238,10 +216,10 @@ const FAQ_DATA = [
     },
     {
         q: 'Does the platform work on mobile, tablet, and desktop?',
-        a: 'Yes. Dr. Mohamed Abdullah\'s platform is designed to run smoothly and responsively on all devices: smartphones, tablets, laptops, and desktop computers.'
+        a: 'Yes. Mr. Islam Abdelwahed\'s platform is designed to run smoothly and responsively on all devices: smartphones, tablets, laptops, and desktop computers.'
     },
     {
-        q: 'How can I contact Dr. Mohamed Abdullah to ask questions and follow up on assignments?',
+        q: 'How can I contact Mr. Islam Abdelwahed to ask questions and follow up on assignments?',
         a: 'There is a dedicated educational team along with WhatsApp and Telegram groups for enrolled students to answer all questions, solve difficult problems, and follow up on assignments and periodic exams.'
     }
 ];
@@ -266,9 +244,9 @@ const CURRENT_USER = {
 };
 
 const ACTIVITY_DATA = [
-    { icon: '✅', text: 'Completed lesson "Laws of Motion"', time: '2 hours ago', color: 'green' },
-    { icon: '📝', text: 'Scored 90% on Kinematics Quiz', time: '5 hours ago', color: 'yellow' },
-    { icon: '🎥', text: 'Watched lesson "Electric Fields"', time: 'Yesterday', color: 'blue' },
+    { icon: '✅', text: 'Completed lesson "Cell Structure"', time: '2 hours ago', color: 'green' },
+    { icon: '📝', text: 'Scored 90% on Genetics Quiz', time: '5 hours ago', color: 'yellow' },
+    { icon: '🎥', text: 'Watched lesson "Human Physiology"', time: 'Yesterday', color: 'blue' },
     { icon: '📄', text: 'Downloaded Unit 1 Summary PDF', time: '2 days ago', color: 'red' },
     { icon: '🏆', text: 'Successfully finished Unit 1', time: '3 days ago', color: 'green' },
 ];
@@ -277,7 +255,7 @@ const ACTIVITY_DATA = [
 // ADMIN CONFIG
 // ═══════════════════════════════════════════════════════════════
 const ADMIN_EMAIL = 'admin@iraqi.com';
-// (حُذفت كلمة مرور الأدمن المكتوبة في الكود — الأدمن حساب حقيقي في Firebase Authentication + مستند admins/{uid})
+const ADMIN_PASSWORD = 'adm123';
 
 // ═══════════════════════════════════════════════════════════════
 // LESSONS DATABASE — localStorage CRUD
@@ -469,7 +447,7 @@ function getEffectiveCoursePackages(course, isEnrolled) {
     var enrolled = isEnrolled;
     if (enrolled === undefined) {
         try {
-            var session = (window.AuthService && window.AuthService.getCurrentUser()) || null;   // من الحساب الموثَّق، لا من كاش المتصفح
+            var session = JSON.parse(localStorage.getItem('iraqiplatform_current_user') || 'null');
             if (session && Array.isArray(session.enrolledCourses)) {
                 enrolled = session.enrolledCourses.some(function (id) {
                     return String(id) === String(course.id);
@@ -643,16 +621,12 @@ function getEffectiveCoursePackages(course, isEnrolled) {
 // ── getAllCourses: fallback إذا لم يُحمَّل dashboard-bridge.js ──
 if (typeof window !== 'undefined') {
     window.SITE_CONFIG = SITE_CONFIG;
-    // ⚠️ إصلاح جذري: COURSES_DATA غير معرّف في هذا المشروع (الكورسات تأتي من Firestore عبر dashboard-bridge).
-    // السطر القديم `window.COURSES_DATA = COURSES_DATA` كان يرمي ReferenceError فيتوقف تنفيذ data.js هنا،
-    // ولا تُعرَّف أبداً دوال نظام التقدّم (markLessonCompleted / getLessonAccessStatus / enrichLessonsWithProgress)
-    // ولذلك لم يكن قفل الدرس التالي بعد الاختبار يعمل من الأساس.
-    window.COURSES_DATA = (typeof COURSES_DATA !== 'undefined') ? COURSES_DATA : [];
+    window.COURSES_DATA = COURSES_DATA;
     window.STAGES_DATA = STAGES_DATA;
     window.FAQ_DATA = typeof FAQ_DATA !== 'undefined' ? FAQ_DATA : [];
     window.FEATURES_DATA = typeof FEATURES_DATA !== 'undefined' ? FEATURES_DATA : [];
     if (typeof window.getAllCourses !== 'function') {
-        window.getAllCourses = function () { return window.COURSES_DATA; };
+        window.getAllCourses = function () { return COURSES_DATA; };
     }
 }
 
@@ -786,16 +760,6 @@ if (typeof window !== 'undefined') {
 
         // الدرس السابق مرتبط باختبار → نتحقق من النتيجة
         var quizId = prevLesson.quizId;
-        if (window.QuizService && userId) {
-            // النتيجة المحفوظة في قاعدة البيانات هي التي تقرر فتح/قفل الدرس التالي
-            var g = window.QuizService.evaluateGate(userId, quizId);
-            if (!g.locked) return { canAccess: true, quizPassed: g.state === 'passed' };
-            return {
-                canAccess: false,
-                reason: g.state === 'failed' ? 'quiz_failed' : 'quiz_required',
-                quizId: quizId, passRate: g.passRate, achieved: g.achieved, prevLessonTitle: prevLesson.title
-            };
-        }
         var quiz = (typeof window.getQuizById === 'function') ? window.getQuizById(quizId) : null;
         var passRate = quiz ? (quiz.averageGrade || quiz.passingGrade || 50) : 50;
         var attempt = (typeof window.getQuizAttempt === 'function' && userId)

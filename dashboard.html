@@ -6,23 +6,23 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>لوحة التحكم — منصة الدكتور محمد عبد الله | عميد الفيزياء</title>
+<title>لوحة التحكم — منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء</title>
 
 <!-- ═══════════════════════════════════════════════════════════
        PWA — تطبيق ويب تقدمي (Progressive Web App)
-       منصة الدكتور محمد عبد الله
+       منصة الخلية — أ/ إسلام عبدالواحد
        ═══════════════════════════════════════════════════════════ -->
-<link rel="manifest" href="manifest.json?v=20260923-1809">
-<meta name="theme-color" content="#1D1038">
+<link rel="manifest" href="manifest.json?v=20260923-0739">
+<meta name="theme-color" content="#06B6D4">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="د. محمد عبد الله">
+<meta name="apple-mobile-web-app-title" content="Mr. Abdelwahed">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="stylesheet" href="pwa-install.css?v=20260923-1809">
+<link rel="stylesheet" href="pwa-install.css?v=20260923-0739">
 
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -32,19 +32,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
 <!-- firebase-config.js أولاً: يُهيّئ window.db قبل أي شيء آخر -->
-<script src="firebase-config.js?v=20260923-1809"></script>
-<script src="firebase-service.js?v=20260923-1809"></script>
-<script src="auth-service.js?v=20260923-1809"></script>
+<script src="firebase-config.js?v=20260923-0739"></script>
+<script src="firebase-service.js?v=20260923-0739"></script>
 <style>
 :root{
-  --primary:#7F56D0;--primary-dark:#55309A;--accent:#A468DA;--accent2:#55309A;
+  --primary:#06B6D4;--primary-dark:#0E7490;--accent:#F59E0B;--accent2:#0E7490;
   --success:#2ed573;--danger:#ff4757;--warning:#ffa502;
-  --bg:#f8fafc;--sidebar-bg:#1D1038;--card-bg:#fff;--text:#1A1227;
+  --bg:#f8fafc;--sidebar-bg:#0f172a;--card-bg:#fff;--text:#0f172a;
   --border:#e2e8f0;--sidebar-text:#94a3b8;--sidebar-active:#fff;
 }
 [data-theme="dark"]{
-  --bg:#130E1D;--card-bg:#1A1424;--text:#e2e8f0;--border:#2A2237;
-  --sidebar-bg:#150B27;--primary:#A585DF;--primary-dark:#7F56D0;
+  --bg:#0b1220;--card-bg:#111827;--text:#e2e8f0;--border:#1e293b;
+  --sidebar-bg:#030713;--primary:#22D3EE;--primary-dark:#06B6D4;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{overflow-x:hidden;width:100%;}
@@ -55,20 +54,19 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .sidebar-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:12px;}
 .sidebar-logo-icon{width:46px;height:46px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;color:white;font-weight:900;flex-shrink:0;overflow:hidden;}
 .sidebar-logo-icon img {width:100%;height:100%;object-fit:cover;display:block;}
-.sidebar-logo-text{color:white;font-weight:900;font-size:14.5px;line-height:1.35;font-family:'Tajawal',sans-serif;}
-.sidebar-logo-icon svg.sidebar-brand-mark{width:36px;height:36px;display:block;}
+.sidebar-logo-text{color:white;font-weight:900;font-size:16px;font-family:'Tajawal',sans-serif;}
 .sidebar-logo-sub{color:var(--sidebar-text);font-size:11px;}
 
 .sidebar-section{padding:20px 12px 8px;font-size:11px;color:var(--sidebar-text);text-transform:uppercase;letter-spacing:1px;font-weight:700;}
 .nav-item{display:flex;align-items:center;gap:12px;padding:11px 16px;margin:2px 8px;border-radius:10px;cursor:pointer;color:var(--sidebar-text);font-size:14px;font-weight:600;transition:all .2s;text-decoration:none;}
 .nav-item:hover{background:rgba(255,255,255,.07);color:white;}
-.nav-item.active{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;box-shadow:0 4px 14px rgba(127,86,208,.35);}
+.nav-item.active{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;box-shadow:0 4px 14px rgba(6, 182, 212,.35);}
 .nav-item .icon{font-size:18px;width:22px;text-align:center;}
 .nav-badge{margin-right:auto;background:var(--accent2);color:white;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
 
 .sidebar-bottom{margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,.07);}
 .admin-info{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.05);}
-.admin-avatar{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#BC88E8);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:900;}
+.admin-avatar{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),#f7b731);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:white;font-weight:900;}
 .admin-name{color:white;font-size:13px;font-weight:700;}
 .admin-role{color:var(--sidebar-text);font-size:11px;}
 
@@ -80,7 +78,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .topbar-actions button{background:var(--bg);border:2px solid var(--border);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:14px;font-family:'Tajawal',sans-serif;color:var(--text);transition:all .2s;}
 .topbar-actions button:hover{border-color:var(--primary);color:var(--primary);}
 .theme-toggle{background:#FDF8F0;border:2px solid var(--primary);border-radius:30px;padding:6px 12px;cursor:pointer;font-size:14px;}
-[data-theme="dark"] .theme-toggle{background:#2A2237;}
+[data-theme="dark"] .theme-toggle{background:#1e293b;}
 
 .content{padding:28px 32px;flex:1;}
 
@@ -115,7 +113,7 @@ tr:hover td{background:rgba(200,169,110,.03);}
 .badge.active{background:#e8fff3;color:#27ae60;}
 .badge.inactive{background:#fff0f3;color:#c0392b;}
 .badge.grade1{background:#e8f4ff;color:var(--primary-dark);}
-.badge.grade2{background:#fff8e8;color:#e67e22;}
+.badge.grade2{background:#ECFEFF;color:#e67e22;}
 .badge.grade3{background:#fce8ff;color:#8e44ad;}
 .action-btns{display:flex;gap:6px;}
 .btn-view{background:#e8f4ff;color:var(--primary);border:none;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'Tajawal',sans-serif;font-weight:600;}
@@ -410,7 +408,7 @@ tr:hover td{background:rgba(200,169,110,.03);}
   text-align: right;
 }
 .payment-instruction-title {
-  color: #d68910;
+  color: #059669;
   font-weight: 800;
   font-size: 15px;
   margin-bottom: 8px;
@@ -717,7 +715,7 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
 
 /* ══ CARD 1: الأول الثانوي — Indigo/Violet ══ */
 .grade-card.grade-sec1 {
-  --gc-bg: linear-gradient(155deg, #1E1330 0%, #301B55 60%, #21133A 100%);
+  --gc-bg: linear-gradient(155deg, #0e1535 0%, #12195e 60%, #0d1440 100%);
   --gc-border: linear-gradient(135deg, rgba(99,102,241,0.7), rgba(139,92,246,0.4), rgba(99,102,241,0.15));
   --gc-accent: linear-gradient(90deg, #6366f1, #818cf8, #a5b4fc);
   --gc-icon-bg: linear-gradient(135deg, rgba(99,102,241,0.28), rgba(99,102,241,0.1));
@@ -738,19 +736,19 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
 
 /* ══ CARD 2: الثاني الثانوي — Sky Blue ══ */
 .grade-card.grade-sec2 {
-  --gc-bg: linear-gradient(155deg, #160B28 0%, #29164B 60%, #1B0E31 100%);
+  --gc-bg: linear-gradient(155deg, #051b2e 0%, #0c2d55 60%, #071e38 100%);
   --gc-border: linear-gradient(135deg, rgba(56,189,248,0.7), rgba(14,165,233,0.4), rgba(56,189,248,0.15));
-  --gc-accent: linear-gradient(90deg, #A585DF, #7dd3fc, #bae6fd);
+  --gc-accent: linear-gradient(90deg, #22D3EE, #7dd3fc, #bae6fd);
   --gc-icon-bg: linear-gradient(135deg, rgba(56,189,248,0.28), rgba(56,189,248,0.08));
   --gc-icon-color: #7dd3fc;
   --gc-icon-border: rgba(56,189,248,0.45);
   --gc-icon-shadow: rgba(56,189,248,0.35);
-  --gc-badge-bg: linear-gradient(135deg, #55309A, #7F56D0);
+  --gc-badge-bg: linear-gradient(135deg, #0E7490, #06B6D4);
   --gc-badge-color: #ffffff;
   --gc-badge-border: rgba(125,211,252,0.6);
   --gc-title: #e0f2fe;
   --gc-text: #94a3b8;
-  --gc-btn-bg: linear-gradient(135deg, #A585DF, #7F56D0);
+  --gc-btn-bg: linear-gradient(135deg, #22D3EE, #06B6D4);
   --gc-btn-color: #fff;
   --gc-btn-shadow: rgba(56,189,248,0.4);
   --gc-btn-shadow-hover: rgba(56,189,248,0.6);
@@ -821,18 +819,11 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="sidebar-logo-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" class="sidebar-brand-mark" aria-hidden="true"><defs>
-<linearGradient id="sbm" x1="10" y1="34" x2="38" y2="14" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D8C4FF"/></linearGradient>
-<linearGradient id="sbo" x1="3" y1="34" x2="45" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#C9A8FF"/><stop offset="1" stop-color="#8C62DB"/></linearGradient>
-</defs>
-<circle cx="24" cy="24" r="21.4" stroke="url(#sbo)" stroke-width="1.7" fill="none" opacity="1.0"/>
-<path d="M10 34 C10 24 12 14 17 14 C20.5 14 21 30 24 30 C27 30 27.5 14 31 14 C36 14 38 24 38 34" stroke="url(#sbm)" stroke-width="3.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-<circle cx="39.9" cy="9.68" r="4.9" fill="#D9B6F5" opacity=".22"/>
-<circle cx="39.9" cy="9.68" r="2.7" fill="#F0DBFF"/></svg>
+      <img src="ايقونة الهدر.png" alt="أ/ إسلام عبدالواحد">
     </div>
     <div>
-      <div class="sidebar-logo-text">منصة الدكتور محمد عبد الله</div>
-      <div class="sidebar-logo-sub">عميد الفيزياء · لوحة التحكم</div>
+      <div class="sidebar-logo-text">أ/ إسلام عبدالواحد</div>
+      <div class="sidebar-logo-sub">لوحة التحكم</div>
     </div>
   </div>
 
@@ -902,7 +893,7 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
     <div class="admin-info">
       <div class="admin-avatar">أ</div>
       <div>
-        <div class="admin-name">الدكتور محمد عبد الله</div>
+        <div class="admin-name">الأستاذ طلعت الشناوي</div>
         <div class="admin-role">مدير المنصة</div>
       </div>
     </div>
@@ -944,11 +935,11 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
           }
         })() : alert('firebase-snapshot.js غير محمّل')"
         title="عرض إحصاء كامل: عدد الطلاب بالصف والحالة، الكورسات، الدفعات..."
-        style="background:linear-gradient(135deg,#7F56D0,#55309A);color:#fff;border-color:transparent;font-weight:700;"
+        style="background:linear-gradient(135deg,#06B6D4,#0E7490);color:#fff;border-color:transparent;font-weight:700;"
       >📊 إحصائيات</button>
 
       <button class="theme-toggle" onclick="toggleTheme()">☀️ 🌙</button>
-      <button onclick="(window.AuthService?window.AuthService.logout():Promise.resolve()).then(function(){window.location.replace('index.html#login')})">🚪 خروج</button>
+      <button onclick="if(window.auth&&window.auth.currentUser){window.auth.signOut();}if(window.authLegacy&&window.authLegacy.currentUser){window.authLegacy.signOut();}localStorage.removeItem('alsaqr_current_user');window.location.replace('index.html#login')">🚪 خروج</button>
     </div>
   </div>
 
@@ -974,7 +965,7 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
           </div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background:#fff8e8">📚</div>
+          <div class="stat-icon" style="background:#ECFEFF">📚</div>
           <div>
             <div class="stat-label">الكورسات المتاحة</div>
             <div class="stat-val" id="statCourses">0</div>
@@ -1445,7 +1436,7 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
           <div><div class="stat-label">مستخدمة</div><div class="stat-val" id="vcUsed">0</div></div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background:#fff8e8">📆</div>
+          <div class="stat-icon" style="background:#ECFEFF">📆</div>
           <div><div class="stat-label">أكواد هذا الشهر</div><div class="stat-val" id="vcThisMonth">0</div></div>
         </div>
       </div>
@@ -1712,9 +1703,9 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
       <!-- صورة الكورس مع Drag & Drop -->
       <div class="form-group">
         <label>صورة الكورس 🖼️</label>
-        <div id="courseThumbnailContainer" style="border:3px dashed #C8A96E;border-radius:14px;padding:28px;text-align:center;cursor:pointer;background:var(--bg);position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;transition:all .3s"
+        <div id="courseThumbnailContainer" style="border:3px dashed #67E8F9;border-radius:14px;padding:28px;text-align:center;cursor:pointer;background:var(--bg);position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;transition:all .3s"
              onclick="document.getElementById('acThumbnailInput').click()"
-             ondrop="handleCourseThumbnailDrop(event)" ondragover="event.preventDefault();event.target.style.borderColor='#8B6914';event.target.style.background='rgba(200,169,110,.1)'" ondragleave="event.target.style.borderColor='#C8A96E';event.target.style.background='var(--bg)'">
+             ondrop="handleCourseThumbnailDrop(event)" ondragover="event.preventDefault();event.target.style.borderColor='#0891B2';event.target.style.background='rgba(200,169,110,.1)'" ondragleave="event.target.style.borderColor='#67E8F9';event.target.style.background='var(--bg)'">
           <div style="text-align:center">
             <div style="font-size:48px;margin-bottom:10px">📁</div>
             <div style="font-weight:700;font-size:14px;color:var(--primary)">اسحب الصورة هنا أو اضغط للاختيار</div>
@@ -1764,25 +1755,25 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
       <!-- العنوان الثابت الملون -->
       <div class="form-group">
         <label>العنوان الثابت بالخلفية الملونة (الذي يظهر في البطاقة)</label>
-        <input type="text" id="acHeaderTitle" placeholder="مثال: اللغة العربية - الدكتور محمد عبد الله - الصف الثالث الثانوي">
+        <input type="text" id="acHeaderTitle" placeholder="مثال: اللغة العربية - الأستاذ طلعت الشناوي - الصف الثالث الثانوي">
         <div class="field-hint">هذا العنوان يظهر بخلفية ملونة في أعلى بطاقة الكورس</div>
       </div>
 
       <!-- منتقي الألوان -->
       <div class="form-group">
         <label>اختر لون خلفية البطاقة 🎨</label>
-        <div id="colorPreview" style="width:100%;height:80px;border-radius:14px;background:linear-gradient(135deg,#8B6F47,#A0826D);margin-bottom:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.15);transition:background .3s">
+        <div id="colorPreview" style="width:100%;height:80px;border-radius:14px;background:linear-gradient(135deg,#0E7490,#22D3EE);margin-bottom:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.15);transition:background .3s">
           <span style="color:#fff;font-weight:700;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.4)">معاينة اللون</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px" id="colorPaletteContainer"></div>
         <div style="display:flex;align-items:center;gap:10px;padding:10px;border:2px dashed var(--border);border-radius:12px">
-          <input type="color" id="acCustomColor" value="#8B6F47"
+          <input type="color" id="acCustomColor" value="#0E7490"
             style="width:46px;height:46px;border:none;border-radius:10px;cursor:pointer;padding:2px"
             oninput="if(window._applyColor){var g='linear-gradient(135deg,'+this.value+','+this.value+'bb)';window._applyColor(g);}"
             onchange="if(window._applyColor){var g='linear-gradient(135deg,'+this.value+','+this.value+'bb)';window._applyColor(g);}">
           <span style="font-size:13px;color:#888">أو اختر لون مخصص من هنا</span>
         </div>
-        <input type="hidden" id="acHeaderColor" value="linear-gradient(135deg,#8B6F47,#A0826D)">
+        <input type="hidden" id="acHeaderColor" value="linear-gradient(135deg,#0E7490,#22D3EE)">
       </div>
 
       <!-- ══════════ تخصيص كارت الكورس في الصفحة الرئيسية (الصورة + الشريط + الـ Hover) ══════════ -->
@@ -1816,7 +1807,7 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
             <div></div>
             <div>
               <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;">لون خلفية الشريط</label>
-              <input type="color" id="acCardNameBg" value="#7F56D0" style="width:100%;height:42px;border:none;border-radius:10px;cursor:pointer;padding:2px;">
+              <input type="color" id="acCardNameBg" value="#06B6D4" style="width:100%;height:42px;border:none;border-radius:10px;cursor:pointer;padding:2px;">
             </div>
             <div>
               <label style="font-size:12px;font-weight:700;display:block;margin-bottom:5px;">لون نص الشريط</label>
@@ -1884,12 +1875,12 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
         <div class="field-hint" style="margin-bottom:14px;">يتم حفظ هذه الإعدادات بشكل مستقل لكل كورس، وتظهر فوراً في بانر صفحة الكورس عند الطلاب.</div>
 
         <!-- معاينة مباشرة -->
-        <div id="bannerLivePreview" style="border-radius:18px;padding:18px 18px 16px;color:#fff;position:relative;overflow:hidden;margin-bottom:16px;min-height:120px;background:linear-gradient(120deg,#0a3f7a 0%,#0e63b8 45%,#2F1955 100%);box-shadow:0 8px 24px rgba(8,47,92,.28);transition:background .3s;">
+        <div id="bannerLivePreview" style="border-radius:18px;padding:18px 18px 16px;color:#fff;position:relative;overflow:hidden;margin-bottom:16px;min-height:120px;background:linear-gradient(120deg,#0a3f7a 0%,#0e63b8 45%,#063568 100%);box-shadow:0 8px 24px rgba(8,47,92,.28);transition:background .3s;">
           <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;">
             <div style="flex:1;min-width:0;">
               <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:4px 12px;border-radius:50px;font-size:11px;font-weight:800;margin-bottom:10px;">● أنت الآن في كورس</div>
               <div id="bannerPreviewTitle" style="font-size:17px;font-weight:900;margin-bottom:6px;text-shadow:0 2px 8px rgba(0,0,0,.25);">اسم الكورس هنا</div>
-              <div style="font-size:12px;font-weight:700;opacity:.92;">✓ منصة الدكتور محمد عبد الله — عميد الفيزياء</div>
+              <div style="font-size:12px;font-weight:700;opacity:.92;">✓ منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء</div>
             </div>
             <div id="bannerPreviewImgWrap" style="display:none;width:70px;height:86px;flex-shrink:0;">
               <img id="bannerPreviewImg" style="width:100%;height:100%;object-fit:cover;border-radius:12px;-webkit-mask-image:linear-gradient(to bottom,#000 78%,transparent 100%);mask-image:linear-gradient(to bottom,#000 78%,transparent 100%);">
@@ -1900,9 +1891,9 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
         <!-- صورة البانر -->
         <div style="margin-bottom:16px;">
           <label style="font-size:13px;font-weight:800;display:block;margin-bottom:8px;">صورة البانر 🖼️</label>
-          <div id="bannerImageContainer" style="border:3px dashed #A585DF;border-radius:14px;padding:18px;text-align:center;cursor:pointer;background:var(--bg);min-height:90px;display:flex;align-items:center;justify-content:center;transition:all .3s"
+          <div id="bannerImageContainer" style="border:3px dashed #22D3EE;border-radius:14px;padding:18px;text-align:center;cursor:pointer;background:var(--bg);min-height:90px;display:flex;align-items:center;justify-content:center;transition:all .3s"
                onclick="document.getElementById('acBannerImageInput').click()"
-               ondrop="handleBannerImageDrop(event)" ondragover="event.preventDefault();event.target.style.borderColor='#7F56D0';" ondragleave="event.target.style.borderColor='#A585DF';">
+               ondrop="handleBannerImageDrop(event)" ondragover="event.preventDefault();event.target.style.borderColor='#06B6D4';" ondragleave="event.target.style.borderColor='#22D3EE';">
             <div>
               <div style="font-size:30px;margin-bottom:6px;">📁</div>
               <div style="font-weight:700;font-size:13px;color:var(--primary);">اسحب الصورة هنا أو اضغط للاختيار</div>
@@ -1983,7 +1974,7 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
             <div style="font-weight:800;font-size:13px;color:#7c3aed;display:flex;align-items:center;gap:6px;">
               🧠 التحليل الذكي الداخلي للكورس
             </div>
-            <span style="font-size:11px;background:#fef3c7;color:#92400e;padding:3px 12px;border-radius:20px;font-weight:700;">للنظام فقط — لا يظهر للطلاب</span>
+            <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:3px 12px;border-radius:20px;font-weight:700;">للنظام فقط — لا يظهر للطلاب</span>
           </div>
           <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.7;background:rgba(124,58,237,0.04);padding:10px;border-radius:10px;">
             💡 هذا الوصف يستخدمه <strong>نظام الترشيح بالذكاء الاصطناعي</strong> لفهم الكورس بعمق ومطابقته مع مشاكل الطلاب. يُولَّد تلقائياً عند الضغط على "✨ توليد" أعلاه، أو يمكنك تعديله يدوياً لتحسين دقة الترشيح.
@@ -2282,22 +2273,6 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
         <input type="number" id="aqPassingGrade" value="50" min="0" max="100"><div class="field-hint">الدرجة المرجعية أو الحد المتوسط للاختبار، والقيمة الافتراضية 50%.</div>
       </div>
       <div class="form-group">
-        <label>عدد المحاولات المسموحة</label>
-        <select id="aqMaxAttempts">
-          <option value="0">غير محدود — حتى النجاح</option>
-          <option value="1">محاولة واحدة فقط</option>
-          <option value="2">محاولتان</option>
-          <option value="3">3 محاولات</option>
-          <option value="5">5 محاولات</option>
-        </select>
-        <div class="field-hint">يُطبَّق من قاعدة البيانات: لا يمكن تجاوزه بالـRefresh أو تسجيل الخروج أو تغيير الجهاز/المتصفح.</div>
-      </div>
-      <div class="form-group">
-        <label>مراجعة الإجابات الصحيحة</label>
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer;"><input type="checkbox" id="aqShowAnswers" style="width:auto;"> السماح للطالب برؤية الإجابات الصحيحة بعد انتهاء الاختبار</label>
-        <div class="field-hint">الافتراضي: لا تظهر الإجابات الصحيحة للطالب.</div>
-      </div>
-      <div class="form-group">
         <label>إحصائيات الأسئلة</label>
         <div style="padding:10px; background:var(--bg); border:1.5px solid var(--border); border-radius:10px; font-weight:800; font-size:14px;">
           عدد الأسئلة: <span id="aqQuestionsCountLbl">0</span> | إجمالي الدرجات: <span id="aqTotalPointsLbl">0</span>
@@ -2485,26 +2460,17 @@ window.GRADE_OPTIONS = window.GRADE_OPTIONS || [
 // ---- STATE ----
 var AI_QUIZ_TEXT_MAX = 28000;
 
-// currentUser تُملأ لاحقاً من [AdminAuthGuard v2] أسفله بعد التحقق الفعلي من Firebase — وليس من الكاش مباشرة.
-let currentUser = null;
+let currentUser = JSON.parse(localStorage.getItem('alsaqr_current_user'));
+// ── حماية الداشبورد (UX فقط): منع ظهور الصفحة قبل التأكد ──
+if (!currentUser || currentUser.role !== 'admin') {
+  window.location.replace('index.html#login');
+  // لا نستخدم throw هنا لأنه يوقف تنفيذ كل الكود في نفس الـ script block
+  // بما فيه دوال showPage و renderCoursesAdmin وغيرها
+  // الـ replace() كافية — المتصفح هيروح فوراً
+}
 
 
-// [AdminAuthGuard v2] الحماية الفعلية: الجلسة لا تُعتبر جلسة أدمن إلا بعد التحقق من Firebase Authentication
-// ومن وجود مستند admins/{uid} في قاعدة البيانات. الكاش المحلي (alsaqr_current_user) لا يكفي أبداً.
-(function () {
-  var page = document.documentElement;
-  page.style.visibility = 'hidden';
-  var bail = function () {
-    try { localStorage.removeItem('alsaqr_current_user'); } catch (e) {}
-    window.location.replace('index.html#login');
-  };
-  if (!window.AuthService) { bail(); return; }
-  window.AuthService.requireAdmin().then(function (ok) {
-    if (!ok) { bail(); return; }
-    currentUser = window.AuthService.getCurrentUser();   // الملف الكامل الموثَّق من قاعدة البيانات، وليس نسخة الكاش المختصرة
-    page.style.visibility = '';
-  }, bail);
-})();
+// [AdminAuthGuard] ← تم إلغاء الحماية بـ Firebase Auth — الدخول بالباسورد فقط (alsaqr_current_user)
 
 // ✅ تسجيل زيارة الداشبورد
 if(typeof trackDailyVisit === 'function') trackDailyVisit();
@@ -3372,7 +3338,7 @@ function openManageLessonsModal(courseId){
           <div style="font-size:12px;color:var(--text2);margin-top:4px">${segCount} مقطع فيديو${l.description ? ' · ' + escapeHtml(l.description.substring(0,50)) : ''}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="openEditLessonModal(${courseId},${l.id})" style="background:#8B6914;color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px">✏️ تعديل</button>
+          <button onclick="openEditLessonModal(${courseId},${l.id})" style="background:#0891B2;color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px">✏️ تعديل</button>
           <button onclick="deleteLessonFromCourse(${courseId},${l.id})" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px">🗑️ حذف</button>
         </div>
       </div>`;
@@ -3468,7 +3434,6 @@ async function saveEditedLesson(){
       return;
     }
   }
-  if (quizIdInput && !(await verifyQuizLinkable(quizIdInput))) return;
 
   const cs = getCourses();
   const c = cs.find(x=>x.id==courseId);
@@ -3629,7 +3594,7 @@ function renderStudentsGradeSummary(users){
     ['أولى إعدادي','الأول الإعدادي','#16a34a'],
     ['تانية إعدادي','الثاني الإعدادي','#0891b2'],
     ['تالتة إعدادي','الثالث الإعدادي','#dc2626'],
-    ['1','الأول الثانوي','#7F56D0'],
+    ['1','الأول الثانوي','#06B6D4'],
     ['2','الثاني الثانوي','#f5a623'],
     ['3','الثالث الثانوي','#8e44ad']
   ];
@@ -3678,7 +3643,7 @@ function togglePalestinianFilter(){
   palestinianOnlyFilter = !palestinianOnlyFilter;
   const btn = document.getElementById('palestinianFilterBtn');
   if(btn){
-    btn.style.background = palestinianOnlyFilter ? 'linear-gradient(135deg,#24163C,#0a5c36)' : 'var(--bg)';
+    btn.style.background = palestinianOnlyFilter ? 'linear-gradient(135deg,#0e4429,#0a5c36)' : 'var(--bg)';
     btn.style.color = palestinianOnlyFilter ? '#fff' : 'var(--text)';
     btn.style.borderColor = palestinianOnlyFilter ? '#0a5c36' : 'var(--border)';
   }
@@ -3970,12 +3935,12 @@ function renderCoursesAdmin(){
     // ── Badge نوع الكورس: عادي / مجمع ──
     const isBundle = c.courseType === 'bundle';
     const courseTypeBadge = isBundle
-      ? `<span style="background:rgba(2,132,199,0.12);color:#7F56D0;padding:4px 10px;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-top:6px;margin-left:6px;">🔵 كورس مجمع</span>`
+      ? `<span style="background:rgba(2,132,199,0.12);color:#06B6D4;padding:4px 10px;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-top:6px;margin-left:6px;">🔵 كورس مجمع</span>`
       : `<span style="background:rgba(46,213,115,0.1);color:#2ecc71;padding:4px 10px;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-top:6px;margin-left:6px;">🟢 كورس عادي</span>`;
 
     const childCount = isBundle ? (c.childCourseIds || []).length : 0;
     const bundleInfo = isBundle
-      ? `<div style="margin-top:6px;font-size:12.5px;color:#7F56D0;font-weight:700;">📦 يحتوي على ${childCount} كورس${childCount === 1 ? '' : 'ات'}</div>`
+      ? `<div style="margin-top:6px;font-size:12.5px;color:#06B6D4;font-weight:700;">📦 يحتوي على ${childCount} كورس${childCount === 1 ? '' : 'ات'}</div>`
       : '';
 
     // ── ترتيب العرض: خانة رقم قابلة للتعديل مباشرة + زر حفظ + عرض الترتيب الفعلي الحالي بالصفحة الرئيسية ──
@@ -4063,7 +4028,7 @@ function openEditCourse(id){
   if(c.courseType === 'bundle') renderBundleCoursesPicker(c.childCourseIds || []);
 
   // ✅ FIX: تحميل العنوان الثابت واللون الملون
-  const savedColor = c.headerColor || c.color || c.bg || 'linear-gradient(135deg,#8B6F47,#A0826D)';
+  const savedColor = c.headerColor || c.color || c.bg || 'linear-gradient(135deg,#0E7490,#22D3EE)';
   document.getElementById('acHeaderTitle').value = c.headerTitle || '';
   document.getElementById('acHeaderColor').value = savedColor;
   const colorPreview = document.getElementById('colorPreview');
@@ -4089,7 +4054,7 @@ function openEditCourse(id){
 
   document.getElementById('acCardShowBadge').checked = c.cardShowBadge !== false;
   document.getElementById('acCardNamePosition').value = c.cardNamePosition || 'top';
-  document.getElementById('acCardNameBg').value = c.cardNameBg || '#7F56D0';
+  document.getElementById('acCardNameBg').value = c.cardNameBg || '#06B6D4';
   document.getElementById('acCardNameColor').value = c.cardNameColor || '#ffffff';
   toggleCardNameFields();
 
@@ -4171,16 +4136,16 @@ function openAddCourseModal(){
   updatePriceFieldVisibility();
   selectCourseType('normal');
   document.getElementById('acHeaderTitle').value='';
-  document.getElementById('acHeaderColor').value='linear-gradient(135deg,#8B6F47,#A0826D)';
+  document.getElementById('acHeaderColor').value='linear-gradient(135deg,#0E7490,#22D3EE)';
   const colorPreview = document.getElementById('colorPreview');
-  if(colorPreview) colorPreview.style.background = 'linear-gradient(135deg,#8B6F47,#A0826D)';
-  if(window._renderColorPalette) window._renderColorPalette('linear-gradient(135deg,#8B6F47,#A0826D)');
+  if(colorPreview) colorPreview.style.background = 'linear-gradient(135deg,#0E7490,#22D3EE)';
+  if(window._renderColorPalette) window._renderColorPalette('linear-gradient(135deg,#0E7490,#22D3EE)');
   clearCourseThumbnail();
   resetBannerAppearanceFields();
   selectCardLayout('top');
   document.getElementById('acCardShowBadge').checked = true;
   document.getElementById('acCardNamePosition').value = 'top';
-  document.getElementById('acCardNameBg').value = '#7F56D0';
+  document.getElementById('acCardNameBg').value = '#06B6D4';
   document.getElementById('acCardNameColor').value = '#ffffff';
   toggleCardNameFields();
   document.getElementById('acCardShowStatus').checked = true;
@@ -4228,12 +4193,12 @@ async function saveNewCourse(){
   const imageLayout = document.getElementById('acImageLayout')?.value || 'top';
 
   const headerTitle = document.getElementById('acHeaderTitle').value.trim();
-  const headerColor = document.getElementById('acHeaderColor').value || 'linear-gradient(135deg,#8B6F47,#A0826D)';
+  const headerColor = document.getElementById('acHeaderColor').value || 'linear-gradient(135deg,#0E7490,#22D3EE)';
 
   // ── تخصيص كارت الكورس بالصفحة الرئيسية ──
   const cardShowBadge = document.getElementById('acCardShowBadge')?.checked !== false;
   const cardNamePosition = document.getElementById('acCardNamePosition')?.value || 'top';
-  const cardNameBg = document.getElementById('acCardNameBg')?.value || '#7F56D0';
+  const cardNameBg = document.getElementById('acCardNameBg')?.value || '#06B6D4';
   const cardNameColor = document.getElementById('acCardNameColor')?.value || '#ffffff';
   const cardShowStatus = document.getElementById('acCardShowStatus')?.checked !== false;
   const cardBadgeType = document.getElementById('acCardBadgeType')?.value || 'auto';
@@ -4287,7 +4252,7 @@ async function saveNewCourse(){
 
   // --- إضافة كورس جديد ---
   const emojis=['📖','🌿','🔥','⭐','🎯','💡','🚀','📝'];
-  const colors=['linear-gradient(135deg,#1a1a2e,#8B6914)','linear-gradient(135deg,#1b4332,#2d6a4f)','linear-gradient(135deg,#3d0000,#c00000)','linear-gradient(135deg,#2c1654,#7b2ff7)'];
+  const colors=['linear-gradient(135deg,#1a1a2e,#0891B2)','linear-gradient(135deg,#1b4332,#2d6a4f)','linear-gradient(135deg,#3d0000,#c00000)','linear-gradient(135deg,#2c1654,#7b2ff7)'];
   const newCourse = {
     id: Date.now(),
     title, desc, aiSmartDesc, grade, order, type, price, oldPrice, track,
@@ -4399,14 +4364,14 @@ function updateThumbnailPreviewPosition() {
 // (محفوظة بشكل مستقل لكل كورس: bannerImage / bannerColor / bannerBg)
 // ════════════════════════════════════════════════════════════
 const BANNER_COLOR_PALETTE = [
-  'linear-gradient(120deg,#0a3f7a 0%,#0e63b8 45%,#2F1955 100%)', // أزرق المنصة (افتراضي)
-  'linear-gradient(120deg,#1A1227 0%,#1e3a8a 50%,#0c4a6e 100%)', // أزرق ليلي
-  'linear-gradient(120deg,#2E1A55 0%,#55309A 50%,#422577 100%)', // برتقالي
+  'linear-gradient(120deg,#0a3f7a 0%,#0e63b8 45%,#063568 100%)', // أزرق المنصة (افتراضي)
+  'linear-gradient(120deg,#0f172a 0%,#1e3a8a 50%,#0c4a6e 100%)', // أزرق ليلي
+  'linear-gradient(120deg,#7c2d12 0%,#c2410c 50%,#9a3412 100%)', // برتقالي
   'linear-gradient(120deg,#14532d 0%,#16a34a 50%,#065f46 100%)', // أخضر
   'linear-gradient(120deg,#3b0764 0%,#7c3aed 50%,#4c1d95 100%)', // بنفسجي
-  'linear-gradient(120deg,#78350f 0%,#b45309 45%,#92400e 100%)', // ذهبي/برونزي
-  'linear-gradient(120deg,#2E2145 0%,#4338ca 50%,#2E2145 100%)', // إندigo
-  'linear-gradient(120deg,#1f2937 0%,#374151 50%,#1A1424 100%)'  // رمادي غامق
+  'linear-gradient(120deg,#78350f 0%,#b45309 45%,#065F46 100%)', // ذهبي/برونزي
+  'linear-gradient(120deg,#1e1b4b 0%,#4338ca 50%,#1e1b4b 100%)', // إندigo
+  'linear-gradient(120deg,#1f2937 0%,#374151 50%,#111827 100%)'  // رمادي غامق
 ];
 
 function renderBannerColorPalette(selected){
@@ -4415,7 +4380,7 @@ function renderBannerColorPalette(selected){
   c.innerHTML = BANNER_COLOR_PALETTE.map(g => {
     const isActive = g === selected;
     return `<div onclick="applyBannerColor('${g.replace(/'/g,"\\'")}')"
-      style="height:42px;border-radius:10px;background:${g};cursor:pointer;border:${isActive?'3px solid #7F56D0':'2px solid transparent'};box-shadow:0 2px 8px rgba(0,0,0,.12);transition:transform .2s"
+      style="height:42px;border-radius:10px;background:${g};cursor:pointer;border:${isActive?'3px solid #06B6D4':'2px solid transparent'};box-shadow:0 2px 8px rgba(0,0,0,.12);transition:transform .2s"
       onmouseenter="this.style.transform='scale(1.06)'" onmouseleave="this.style.transform='scale(1)'"></div>`;
   }).join('');
 }
@@ -4659,7 +4624,7 @@ function addLessonSegmentField(title='', videoUrl='', locked=false, duration='',
         class="seg-tab-btn ${currentSource!=='youtube'?'seg-tab-active':''}"
         onclick="switchSegTab(this,'bunny','${segId}')"
         style="flex:1;padding:8px;border-radius:8px;border:2px solid;cursor:pointer;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;
-               ${currentSource!=='youtube'?'background:#7F56D0;color:#fff;border-color:#7F56D0':'background:#f8fafc;color:#475569;border-color:#e2e8f0'}">
+               ${currentSource!=='youtube'?'background:#06B6D4;color:#fff;border-color:#06B6D4':'background:#f8fafc;color:#475569;border-color:#e2e8f0'}">
         🎬 رفع على بياني.net
       </button>
       <button type="button"
@@ -4739,9 +4704,9 @@ function switchSegTab(btn, source, segId) {
     if (sourceInput)  sourceInput.value = 'youtube';
     if (urlInput)     urlInput.value = ''; // مسح الـ URL القديم
   } else {
-    btn.style.background  = '#7F56D0';
+    btn.style.background  = '#06B6D4';
     btn.style.color       = '#fff';
-    btn.style.borderColor = '#7F56D0';
+    btn.style.borderColor = '#06B6D4';
     if (bunnySection) bunnySection.style.display = '';
     if (ytSection)    ytSection.style.display    = 'none';
     if (sourceInput)  sourceInput.value = 'bunny';
@@ -5203,7 +5168,6 @@ async function saveNewLesson(){
     alert('لا يوجد اختبار بهذا الـ ID. راجع صفحة الاختبارات واكتب ID صحيح.');
     return;
   }
-  if (quizId && !(await verifyQuizLinkable(quizId))) return;
 
   // Get Bunny video if uploaded
   const bunnyVideoId = document.getElementById('bunnyUploadedVideoId').value.trim();
@@ -5335,7 +5299,7 @@ function renderEarningsTable() {
         <div style="font-size:24px;font-weight:900;">${totalStudents.toLocaleString('ar-EG')}</div>
         <div style="font-size:12px;opacity:.9;margin-top:3px;">👨‍🎓 إجمالي المشتركين</div>
       </div>
-      <div style="${cardStyle('linear-gradient(135deg,#8B6914,#C8A96E)')}">
+      <div style="${cardStyle('linear-gradient(135deg,#0891B2,#67E8F9)')}">
         <div style="font-size:24px;font-weight:900;">${allCourses.length}</div>
         <div style="font-size:12px;opacity:.9;margin-top:3px;">📚 إجمالي الكورسات</div>
       </div>
@@ -5363,7 +5327,7 @@ async function generateCourseDescAI() {
   const req = prompt || 'اعمل وصف كورس احترافي واضح للطلاب';
 
   // ─── الوصف التسويقي (يظهر للطلاب) ───
-  const marketingPrompt = `أنت مساعد تعليمي لمنصة "الدكتور محمد عبد الله — عميد الفيزياء".
+  const marketingPrompt = `أنت مساعد تعليمي لمنصة "أ/ إسلام عبدالواحد للأحياء".
 اكتب وصفاً تسويقياً جذاباً لكورس دراسي بناءً على الطلب التالي.
 اسم الكورس: ${title}
 طلب المعلم: ${req}
@@ -5494,7 +5458,7 @@ async function startVoiceDesc() {
     if(status) status.textContent = '⏳ جاري تحويل الكلام لوصف...';
     const pField = (document.getElementById('acDescAiPrompt')?.value || '').trim();
     const ttl    = (document.getElementById('acTitle')?.value || '').trim();
-    const aiP    = `أنت مساعد تعليمي لمنصة "الدكتور محمد عبد الله — عميد الفيزياء".
+    const aiP    = `أنت مساعد تعليمي لمنصة "أ/ إسلام عبدالواحد للأحياء".
 المعلم قال: "${final}"
 اسم الكورس: ${ttl || 'غير محدد'}${pField ? '\n' + pField : ''}
 حوّل هذا الكلام لوصف كورس احترافي وواضح للطلاب بإيموجيات تعليمية (📚✨🎯📝🌟).
@@ -5589,9 +5553,9 @@ function buildStudentCourseCard(c, enrolled) {
   const today = new Date().toLocaleDateString('ar-EG');
   const gradeText = gradeLabel(c.grade);
   const settings = JSON.parse(localStorage.getItem('alsaqr_settings')||'{}');
-  const teacherName = settings.teacherName || 'الدكتور محمد عبد الله';
+  const teacherName = settings.teacherName || 'الأستاذ طلعت الشناوي';
   const coverEmoji = c.emoji || '📚';
-  const coverBg = c.color || 'linear-gradient(135deg,#1a1a2e,#8B6914)';
+  const coverBg = c.color || 'linear-gradient(135deg,#1a1a2e,#0891B2)';
   const createdDate = c.created || today;
   const layout = c.imageLayout || 'top'; // 'top' أو 'side'
   const layoutClass = layout === 'side' ? ' layout-side' : '';
@@ -5635,7 +5599,7 @@ function buildStudentCourseCard(c, enrolled) {
           ? `<span class="scc-price-tag"><s style="opacity:.6;font-size:.85em;margin-left:4px;">${discount.oldPrice}</s> ${discount.price} ج.م 💰 <span style="background:#e74c3c;color:#fff;border-radius:6px;padding:1px 6px;font-size:11px;margin-right:4px;">وفر ${discount.savings} ج.م</span></span>`
           : `<span class="scc-price-tag">${c.price || '؟'} ج.م 💰</span>`);
     const badgeHTML = c.courseType === 'bundle'
-      ? '<div class="scc-badge paid" style="background:#7F56D0">📦 كورس مجمع</div>'
+      ? '<div class="scc-badge paid" style="background:#06B6D4">📦 كورس مجمع</div>'
       : (isFree
           ? '<div class="scc-badge free">كورس مجاني!</div>'
           : '<div class="scc-badge paid">كورس مدفوع</div>');
@@ -5799,58 +5763,6 @@ let quizzesData = JSON.parse(localStorage.getItem('alsaqr_quizzes') || '[]');
 let questionBankData = JSON.parse(localStorage.getItem('alsaqr_question_bank') || '[]');
 
 // مزامنة الاختبارات من Firebase عند التحميل
-// ── التحقق من الربط: الاختبار لازم يكون موجوداً فعلاً في قاعدة البيانات ويخص هذا الحساب ──
-// (لا يُكتفى بأن الـ ID مكتوب في الواجهة أو موجود في كاش المتصفح)
-async function verifyQuizLinkable(quizId) {
-  if (!quizId || !window.db) return true;            // بلا اتصال: نعتمد على التحقق المحلي الذي تم بالفعل
-  try {
-    const snap = await window.db.collection('quizzes').doc(String(quizId)).get();
-    if (!snap.exists) { alert('هذا الاختبار غير موجود في قاعدة البيانات، فلا يمكن ربطه بالدرس. راجع صفحة الاختبارات واكتب ID صحيح.'); return false; }
-    const q = snap.data() || {};
-    const me = String((typeof currentUser !== 'undefined' && currentUser && currentUser.id) || '');
-    if (q.ownerId && me && String(q.ownerId) !== me) { alert('هذا الاختبار يخص حساب مدرس آخر، فلا يمكن ربطه بدرس في حسابك.'); return false; }
-    return true;
-  } catch (e) { console.warn('verifyQuizLinkable failed:', e); return true; }
-}
-
-// ── نسخة الطالب العامة من الاختبار (بدون الإجابات الصحيحة) ─────────────
-// الطالب يقرأ collection('quizzes_public') فقط؛ الإجابات تبقى في 'quizzes' وتُستخدم عند التصحيح.
-function buildPublicQuiz(quiz) {
-  const c = JSON.parse(JSON.stringify(quiz));
-  (c.questionsList || []).forEach(q => {
-    delete q.correctOpt; delete q.correct; delete q.correctIndex; delete q.correctAnswer;
-    delete q.answer; delete q.explanation; delete q.solution;
-  });
-  c.publishedAt = new Date().toISOString();
-  return c;
-}
-async function publishQuizPublicCopy(quiz) {
-  if (!window.db || !quiz) return;
-  try { await window.db.collection('quizzes_public').doc(String(quiz.id)).set(buildPublicQuiz(quiz)); }
-  catch (e) { console.warn('publishQuizPublicCopy failed:', e); }
-}
-async function unpublishQuizPublicCopy(id) {
-  if (!window.db) return;
-  try { await window.db.collection('quizzes_public').doc(String(id)).delete(); }
-  catch (e) { console.warn('unpublishQuizPublicCopy failed:', e); }
-}
-// تعبئة النسخ العامة للاختبارات الموجودة أصلاً (مرة عند فتح الداشبورد؛ لا كتابة إلا للناقص/المتغيّر)
-async function publishAllQuizPublicCopies() {
-  if (!window.db || !Array.isArray(quizzesData) || !quizzesData.length) return;
-  try {
-    const snap = await window.db.collection('quizzes_public').get();
-    const existing = {};
-    snap.forEach(d => { existing[d.id] = d.data(); });
-    for (const q of quizzesData) {
-      const cur = existing[String(q.id)];
-      const list = q.questionsList || [];
-      const stale = !cur || cur.updatedAt !== q.updatedAt || (cur.questionsList || []).length !== list.length
-        || cur.maxAttempts !== q.maxAttempts || cur.showAnswers !== q.showAnswers || cur.time !== q.time || cur.averageGrade !== q.averageGrade;
-      if (stale) await publishQuizPublicCopy(q);
-    }
-  } catch (e) { console.warn('publishAllQuizPublicCopies failed:', e); }
-}
-
 async function syncQuizzesFromFirebase() {
   if (!window.db) return;
   try {
@@ -5860,7 +5772,6 @@ async function syncQuizzesFromFirebase() {
       snap.forEach(doc => list.push(doc.data()));
       quizzesData = list;
       localStorage.setItem('alsaqr_quizzes', JSON.stringify(quizzesData));
-      publishAllQuizPublicCopies();
       // مزامنة مع iraqiplatform_quizzes حتى تجده app.js
       localStorage.setItem('iraqiplatform_quizzes', JSON.stringify(quizzesData));
       if (document.getElementById('page-quizzes').classList.contains('active')) {
@@ -5912,8 +5823,6 @@ function openAddQuizModal(quizId = null) {
   document.getElementById('aqSubject').value = '';
   document.getElementById('aqTime').value = '60';
   document.getElementById('aqPassingGrade').value = '50';
-  document.getElementById('aqMaxAttempts').value = '0';
-  document.getElementById('aqShowAnswers').checked = false;
   document.getElementById('aqQuestionsList').innerHTML = '';
   
   if (quizId) {
@@ -5927,8 +5836,6 @@ function openAddQuizModal(quizId = null) {
       document.getElementById('aqSubject').value = quiz.subject || '';
       document.getElementById('aqTime').value = quiz.time || '60';
       document.getElementById('aqPassingGrade').value = quiz.averageGrade || quiz.passingGrade || '50';
-      document.getElementById('aqMaxAttempts').value = String(quiz.maxAttempts != null ? quiz.maxAttempts : 0);
-      document.getElementById('aqShowAnswers').checked = quiz.showAnswers === true;
       if (Array.isArray(quiz.questionsList)) {
         quiz.questionsList.forEach(q => addQuizQuestionField(q));
       }
@@ -6170,8 +6077,6 @@ async function saveNewQuiz() {
   const subject = document.getElementById('aqSubject').value.trim();
   const time = parseInt(document.getElementById('aqTime').value, 10) || 60;
   const averageGrade = parseInt(document.getElementById('aqPassingGrade').value, 10) || 50;
-  const maxAttempts = parseInt(document.getElementById('aqMaxAttempts').value, 10) || 0;
-  const showAnswers = document.getElementById('aqShowAnswers').checked === true;
   
   if (!title) { alert('برجاء إدخال اسم الاختبار أولاً'); return; }
   
@@ -6193,9 +6098,6 @@ async function saveNewQuiz() {
     totalPoints,
     averageGrade,
     passingGrade: averageGrade,
-    maxAttempts,
-    showAnswers,
-    ownerId: String((currentUser && currentUser.id) || 'admin'),
     questionsList: questions,
     updatedAt: new Date().toISOString()
   };
@@ -6244,7 +6146,6 @@ async function saveNewQuiz() {
   if (window.db) {
     try {
       await window.db.collection('quizzes').doc(String(quizId)).set(quizData);
-      await publishQuizPublicCopy(quizData);   // نسخة الطالب بدون الإجابات
       for (const q of questions) {
         const hashId = btoa(unescape(encodeURIComponent(q.q))).slice(0, 30);
         await window.db.collection('question_bank').doc(hashId).set({
@@ -6285,7 +6186,6 @@ async function duplicateQuiz(quizId) {
   if (window.db) {
     try {
       await window.db.collection('quizzes').doc(String(duplicated.id)).set(duplicated);
-      await publishQuizPublicCopy(duplicated);
     } catch(e) {}
   }
   
@@ -6309,7 +6209,6 @@ async function deleteQuiz(id) {
   if (window.db) {
     try {
       await window.db.collection('quizzes').doc(String(id)).delete();
-      await unpublishQuizPublicCopy(id);
     } catch(e) {}
   }
   
@@ -6334,7 +6233,7 @@ function renderQuizzesTable() {
       <td>${q.questionsCount || 0} أسئلة (${q.totalPoints || 0} درجة)</td>
       <td>
         <div class="action-btns" style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn-view" onclick="openAddQuizModal('${q.id}')" style="background:#8B6914;color:#fff;padding:6px 10px;border-radius:6px;">✏️ تعديل</button>
+          <button class="btn-view" onclick="openAddQuizModal('${q.id}')" style="background:#0891B2;color:#fff;padding:6px 10px;border-radius:6px;">✏️ تعديل</button>
           <button class="btn-view" onclick="duplicateQuiz('${q.id}')" style="background:var(--success);color:#fff;padding:6px 10px;border-radius:6px;">📥 نسخ</button>
           <button class="btn-view" onclick="openQuizDetailedResults('${q.id}')" style="background:#7c3aed;color:#fff;padding:6px 10px;border-radius:6px;">📊 النتائج</button>
           <button class="btn-delete" onclick="deleteQuiz('${q.id}')" style="padding:6px 10px;border-radius:6px;">🗑️ حذف</button>
@@ -6445,26 +6344,53 @@ async function openQuizDetailedResults(quizId) {
     });
   }
   
-  // ⚠️ لا بيانات وهمية: كانت هنا محاولات مولّدة تلقائياً "لأغراض التجربة" وتظهر كأنها نتائج حقيقية — أُزيلت.
-  // توحيد الصيغة: الطالب يكتب studentId/userId و total/totalPoints؛ الداشبورد يقرأ الحقول بأسمائها.
-  attemptsList = attemptsList.map(a => {
-    const sid = a.studentId != null ? a.studentId : a.userId;
-    const tot = a.totalPoints != null ? a.totalPoints : (a.total != null ? a.total : (quiz.totalPoints || 0));
-    const pct = a.percentage != null ? a.percentage : (tot ? Math.round((a.score || 0) / tot * 100) : 0);
-    const st = a.startedAt ? (isNaN(Date.parse(a.startedAt)) ? a.startedAt : new Date(a.startedAt).toLocaleString('ar-EG')) : '—';
-    return { ...a, studentId: sid, studentName: a.studentName || a.userName || String(sid || '—'), studentCode: a.studentCode || sid || '—',
-             totalPoints: tot, percentage: pct, score: a.score || 0, elapsedTime: a.elapsedTime || 0,
-             status: a.status || 'submitted', startedAt: st };
-  });
+  // إذا لم توجد محاولات، سنولد محاولات وهمية للطلاب المسجلين فقط لأغراض العرض والتجربة
+  if (!attemptsList.length) {
+    const students = filterUsersByGradeAndType(getUsers(), quiz.grade, 'center');
+    // سنضع محاولتين تجريبيتين
+    if (students.length >= 2) {
+      attemptsList = [
+        {
+          id: `ATT_${students[0].id}_${quizId}`,
+          studentId: students[0].id,
+          studentName: students[0].name,
+          studentCode: students[0].qrCode || students[0].id || '101',
+          quizId: quizId,
+          score: Math.round(quiz.totalPoints * 0.9),
+          totalPoints: quiz.totalPoints,
+          percentage: 90,
+          passed: true,
+          status: 'submitted',
+          startedAt: new Date(Date.now() - 3600000).toLocaleString('ar-EG'),
+          submittedAt: new Date(Date.now() - 1800000).toLocaleString('ar-EG'),
+          elapsedTime: 1800
+        },
+        {
+          id: `ATT_${students[1].id}_${quizId}`,
+          studentId: students[1].id,
+          studentName: students[1].name,
+          studentCode: students[1].qrCode || students[1].id || '102',
+          quizId: quizId,
+          score: Math.round(quiz.totalPoints * 0.4),
+          totalPoints: quiz.totalPoints,
+          percentage: 40,
+          passed: false,
+          status: 'submitted',
+          startedAt: new Date(Date.now() - 3000000).toLocaleString('ar-EG'),
+          submittedAt: new Date(Date.now() - 1200000).toLocaleString('ar-EG'),
+          elapsedTime: 1800
+        }
+      ];
+    }
+  }
   
   window._currentQuizAttempts = attemptsList;
   
   // تحديث الإحصائيات الفورية
-  const done = attemptsList.filter(a => a.status === 'submitted');   // المحاولات الجارية لا تُحسب في الإحصاءات
-  const total = done.length;
-  const passed = done.filter(a => a.score >= (quiz.totalPoints * (quiz.passingGrade / 100))).length;
+  const total = attemptsList.length;
+  const passed = attemptsList.filter(a => a.score >= (quiz.totalPoints * (quiz.passingGrade / 100))).length;
   const failed = total - passed;
-  const avg = total ? Math.round(done.reduce((sum, a) => sum + (a.percentage || 0), 0) / total) : 0;
+  const avg = total ? Math.round(attemptsList.reduce((sum, a) => sum + (a.percentage || 0), 0) / total) : 0;
   
   document.getElementById('resStatTotal').textContent = total;
   document.getElementById('resStatPassed').textContent = passed;
@@ -6586,7 +6512,7 @@ function renderResTabContent() {
       else if (i === 2) medal = '🥉 ';
       return `
         <tr>
-          <td><strong style="color:#d68910; font-size:16px;">${medal}${i + 1}</strong></td>
+          <td><strong style="color:#059669; font-size:16px;">${medal}${i + 1}</strong></td>
           <td><strong>${escHtml(a.studentName)}</strong></td>
           <td><code>${escHtml(a.studentCode)}</code></td>
           <td><strong style="color:var(--success)">${a.score} / ${quiz.totalPoints}</strong></td>
@@ -6605,7 +6531,6 @@ async function resetStudentAttempt(studentId, quizId) {
     try {
       const attemptKey = `ATT_${studentId}_${quizId}`;
       await window.db.collection('quiz_attempts').doc(attemptKey).delete(); // quiz_attempts فضلت على المشروع القديم لأن الاختبارات نفسها هناك
-      try { await window.db.collection('quiz_attempts').doc(`${studentId}_${quizId}`).delete(); } catch(_) {}   // مستند قديم بصيغة userId_quizId
 
       // أيضاً نقوم بتصفير المحاولة في جدول الطلاب الفرعي (على مشروع الطالب الصح)
       const _dbAtt = studentDbById(studentId);
@@ -6841,8 +6766,8 @@ function renderViewsTable() {
   const term = document.getElementById('searchViews')?.value || '';
   // Fake data if none exists
   const dummyViews = [
-    { student: 'سارة خالد', lesson: 'شرح المبتدأ والخبر', grade: '1', time: '10/05/2026 10:30 ص' },
-    { student: 'محمود سعد', lesson: 'نص الاستماع', grade: '2', time: '12/05/2026 08:15 م' }
+    { student: 'سارة خالد', lesson: 'شرح تركيب الخلية', grade: '1', time: '10/05/2026 10:30 ص' },
+    { student: 'يوسف كريم', lesson: 'الحمض النووي DNA', grade: '2', time: '12/05/2026 08:15 م' }
   ].filter(v => v.lesson.includes(term) || v.student.includes(term));
 
   if(!dummyViews.length) {
@@ -6881,7 +6806,7 @@ async function saveVouchersData() {
     return true;
   });
   localStorage.setItem('alsaqr_vouchers', JSON.stringify(vouchersData));
-  // ── مزامنة مع منصة الدكتور محمد عبد الله ─────────────────────────
+  // ── مزامنة مع منصة الخلية — أ/ إسلام عبدالواحد ─────────────────────────
   try {
     // تحويل بنية vouchersData إلى بنية iraqiplatform_codes
     var iraqiCodes = vouchersData.map(function(v) {
@@ -7625,7 +7550,7 @@ function renderVouchersTable() {
       <td><span class="badge ${v.status === 'مستخدم' ? 'inactive' : 'active'}">${v.status}</span></td>
       <td>${studentName}</td>
       <td>${isUsed ? (v.usedAt ? new Date(v.usedAt).toLocaleDateString('ar-EG') : v.date || '—') : '—'}</td>
-      <td><span style="font-size:11px;padding:3px 8px;border-radius:6px;background:${isGeneric ? '#e8f4ff' : '#fff8e8'};color:${isGeneric ? '#1a6fb5' : '#b87c00'}">${isGeneric ? '🎟️ عام' : '👤 مرتبط'}</span></td>
+      <td><span style="font-size:11px;padding:3px 8px;border-radius:6px;background:${isGeneric ? '#e8f4ff' : '#ECFEFF'};color:${isGeneric ? '#1a6fb5' : '#b87c00'}">${isGeneric ? '🎟️ عام' : '👤 مرتبط'}</span></td>
       <td><div class="action-btns"><button class="btn-view" onclick="verifyCode('${v.code}')">عرض</button>${!isUsed ? `<button class="btn-delete" onclick="deleteVoucher('${String(v.id || v.code).replace(/'/g, "\\'")}')">حذف</button>` : ''}</div></td>
     </tr>`;
   }).join('');
@@ -7715,21 +7640,21 @@ function verifyCode(code = '') {
     }
   }
 
-  result.style.background = isUsed ? '#fff8e8' : '#e8fff3';
+  result.style.background = isUsed ? '#ECFEFF' : '#e8fff3';
   result.style.color = '#0f5132';
   result.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap">
         <span style="font-size:26px">${isUsed ? '🔴' : '🟢'}</span>
         <span style="font-size:18px;font-weight:900;font-family:monospace;letter-spacing:3px">${voucher.code}</span>
-        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;background:${isUsed ? '#ffecd0' : '#d1fae5'};color:${isUsed ? '#92400e' : '#065f46'}">${voucher.status || (isUsed ? 'مستخدم' : 'متاح')}</span>
-        <span style="padding:4px 10px;border-radius:20px;font-size:11px;background:${isGeneric ? '#e8f4ff' : '#fff8e8'};color:${isGeneric ? '#1a6fb5' : '#b87c00'}">${isGeneric ? '🎟️ عام' : '👤 مرتبط'}</span>
+        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;background:${isUsed ? '#CFFAFE' : '#d1fae5'};color:${isUsed ? '#065F46' : '#065f46'}">${voucher.status || (isUsed ? 'مستخدم' : 'متاح')}</span>
+        <span style="padding:4px 10px;border-radius:20px;font-size:11px;background:${isGeneric ? '#e8f4ff' : '#ECFEFF'};color:${isGeneric ? '#1a6fb5' : '#b87c00'}">${isGeneric ? '🎟️ عام' : '👤 مرتبط'}</span>
       </div>
       <div><strong>الكورس:</strong> ${voucher.courseTitle || '—'}</div>
       <div><strong>الفترة:</strong> ${voucher.month || '—'}</div>
       ${isUsed ? `
       <div style="grid-column:1/-1;background:#fff3cd;border-radius:10px;padding:12px 16px;border-right:4px solid #f59e0b">
-        <div style="font-weight:900;font-size:13px;margin-bottom:8px;color:#92400e">📋 بيانات الاستخدام</div>
+        <div style="font-weight:900;font-size:13px;margin-bottom:8px;color:#065F46">📋 بيانات الاستخدام</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px">
           <div><strong>الطالب:</strong> ${usedStudent || '—'}</div>
           <div><strong>الهاتف:</strong> ${usedPhone || '—'}</div>
@@ -7866,7 +7791,7 @@ function renderPrintPreview() {
     const isUsed = v.status === 'مستخدم' || v.used;
     return `
     <div style="min-width:200px;padding:16px;border:1px dashed var(--border);border-radius:18px;background:#fff;display:flex;flex-direction:column;gap:10px;position:relative">
-      ${isUsed ? '<div style="position:absolute;top:10px;left:10px;font-size:10px;padding:2px 8px;border-radius:8px;background:#ffecd0;color:#92400e;font-weight:800">مستخدم</div>' : ''}
+      ${isUsed ? '<div style="position:absolute;top:10px;left:10px;font-size:10px;padding:2px 8px;border-radius:8px;background:#CFFAFE;color:#065F46;font-weight:800">مستخدم</div>' : ''}
       <div style="font-size:11px;color:#888">${isGeneric ? '🎟️ كود عام' : '👤 كود مرتبط'}</div>
       <div style="font-family:monospace;font-size:24px;font-weight:900;letter-spacing:4px;color:#1a1a1a;text-align:center">${v.code}</div>
       ${!isGeneric && v.linkedStudentName ? `<div style="font-size:13px;text-align:center"><strong>${v.linkedStudentName}</strong></div>` : ''}
@@ -7973,7 +7898,7 @@ function renderStudentTodayStats() {
         <div class="stat-val">${activeStudentIds.length}</div>
         <div class="stat-change">من ${users.length} طالب</div>
       </div></div>
-      <div class="stat-card"><div class="stat-icon" style="background:#fff8e8">🎬</div><div>
+      <div class="stat-card"><div class="stat-icon" style="background:#ECFEFF">🎬</div><div>
         <div class="stat-label">فيديوهات شُوهدت اليوم</div>
         <div class="stat-val">${todayVideos}</div>
       </div></div>
@@ -8071,8 +7996,8 @@ function showAlert(msg,type='success'){
 
 function loadPlatformSettings(){
   const settings=JSON.parse(localStorage.getItem('alsaqr_settings')||'{}');
-  document.getElementById('settingPlatformName').value=settings.platformName||'منصة الدكتور محمد عبد الله — عميد الفيزياء';
-  document.getElementById('settingTeacherName').value=settings.teacherName||'الدكتور محمد عبد الله';
+  document.getElementById('settingPlatformName').value=settings.platformName||'منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء';
+  document.getElementById('settingTeacherName').value=settings.teacherName||'أ/ إسلام عبدالواحد';
   document.getElementById('settingContactPhone').value=settings.contactPhone||'+20xxxxxxxxxx';
 }
 
@@ -8493,7 +8418,7 @@ function buildBatchPrompt(title, context, batchSize, batchIndex, totalCount) {
   const sourceSection = isPdf
     ? 'المصدر: الملف المرفق (PDF) — اقرأه كاملاً وابنِ الأسئلة منه.'
     : `المحتوى:\n${context}`;
-  return `أنت خبير تربوي متمكن في تدريس الفيزياء للمرحلة الثانوية والإعدادية بمصر ومساعد لمنصة "الدكتور محمد عبد الله — عميد الفيزياء".
+  return `أنت خبير تربوي متمكن في تدريس الأحياء للمرحلة الثانوية والإعدادية بمصر ومساعد لمنصة "أ/ إسلام عبدالواحد للأحياء".
 مهمتك إنشاء ${end - start + 1} سؤال اختيار من متعدد (رقم ${start} إلى ${end} من أصل ${totalCount}) مبنية على المحتوى المرفق.
 رد بـ JSON فقط — مصفوفة array — بهذا الشكل:
 [{"q":"نص السؤال؟","opts":["الصحيح دائماً هنا","خطأ مقنع","خطأ مقنع","خطأ مقنع"]}]
@@ -8587,7 +8512,7 @@ async function generateQuizViaAI() {
     quizzesData.push(newQuiz);
     localStorage.setItem('alsaqr_quizzes', JSON.stringify(quizzesData));
     if(window.db) {
-      try { await window.db.collection('quizzes').doc(String(newQuiz.id)).set(newQuiz); await publishQuizPublicCopy(newQuiz); } catch(e) {}
+      try { await window.db.collection('quizzes').doc(String(newQuiz.id)).set(newQuiz); } catch(e) {}
     }
 
     alert(`🎉 نجاح! تم توليد ${newQuiz.questionsCount} سؤالاً ونشرهم للطلاب.`);
@@ -8625,7 +8550,7 @@ async function generateSummaryViaAI() {
   btn.textContent = '⏳ جاري تفكير وصياغة الشرح والملخص...';
   resultBox.style.display = 'none';
 
-  const promptText = `أنت مساعد تعليمي متميز لمنصة "الدكتور محمد عبد الله — عميد الفيزياء".
+  const promptText = `أنت مساعد تعليمي متميز لمنصة "أ/ إسلام عبدالواحد للأحياء".
 مهمتك هي صياغة شرح وتلخص جذاب، احترافي، وواضح جداً لعنوان الفيديو المرفق وأفكاره.
 يجب أن تركز على النقاط البلاغية أو النحوية بأسلوب مبسط ومحفز للطلاب، مستخدماً علامات التنسيق والرموز التعبيرية المناسبة والتربوية.
 تجنب تكرار الكلام، واجعله يبدو كمرجع سريع للطالب يقرأه قبل مشاهدة المحاضرة أو بعدها ليفهم الفكرة فوراً.
@@ -8677,7 +8602,7 @@ if(currentUser && currentUser.role === 'student') {
   document.querySelectorAll('.student-only').forEach(el=>el.style.display='none');
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display='block');
   if(currentUser) {
-    document.querySelector('.admin-name').textContent = currentUser.name || 'الدكتور محمد عبد الله';
+    document.querySelector('.admin-name').textContent = currentUser.name || 'الأستاذ طلعت الشناوي';
     document.querySelector('.admin-role').textContent = 'مدير المنصة';
   }
   showPage('overview');
@@ -8687,14 +8612,14 @@ if(currentUser && currentUser.role === 'student') {
   // ===== Color Picker =====
   (function() {
     var PALETTE = [
-      'linear-gradient(135deg,#1a1a2e,#8B6914)',
+      'linear-gradient(135deg,#1a1a2e,#0891B2)',
       'linear-gradient(135deg,#1b4332,#2d6a4f)',
       'linear-gradient(135deg,#3d0000,#c00000)',
       'linear-gradient(135deg,#2c1654,#7b2ff7)',
-      'linear-gradient(135deg,#8B6F47,#A0826D)',
+      'linear-gradient(135deg,#0E7490,#22D3EE)',
       'linear-gradient(135deg,#3A2A08,#533483)',
       'linear-gradient(135deg,#b5451b,#e07b39)',
-      'linear-gradient(135deg,#221538,#00897b)',
+      'linear-gradient(135deg,#004d40,#00897b)',
       'linear-gradient(135deg,#212121,#616161)',
       'linear-gradient(135deg,#880e4f,#e91e63)',
       'linear-gradient(135deg,#6B4F0A,#B8860B)',
@@ -8822,10 +8747,10 @@ if(currentUser && currentUser.role === 'student') {
 <script src="firebase-snapshot.js?v=20260810"></script>
 
 <!-- Cache Busting: يتحقق تلقائياً من وجود تحديثات جديدة على السيرفر -->
-<script src="cache-buster.js?v=20260923-1809"></script>
+<script src="cache-buster.js?v=20260923-0739"></script>
 
 <!-- PWA — تسجيل Service Worker + نافذة تثبيت التطبيق (إضافة مستقلة) -->
-<script src="pwa-install.js?v=20260923-1809"></script>
+<script src="pwa-install.js?v=20260923-0739"></script>
 
 </body>
 </html>

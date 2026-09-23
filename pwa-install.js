@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
 //  pwa-install.js — تسجيل الـ Service Worker + نافذة تثبيت التطبيق (PWA)
-//  منصة الدكتور محمد عبد الله — عميد الفيزياء
+//  منصة الخلية — أ/ إسلام عبدالواحد لتعليم الأحياء
 //
 //  ملاحظات مهمة:
 //  • هذا الملف إضافة مستقلة بالكامل — مبيلمسش أي كود تسجيل دخول أو
@@ -101,7 +101,7 @@
             '<div class="pwa-install-sheet" role="dialog" aria-modal="true" aria-labelledby="pwaInstallTitle">' +
                 '<button type="button" class="pwa-install-close" id="pwaInstallClose" aria-label="إغلاق">✕</button>' +
                 '<img src="' + iconSrc + '" alt="أيقونة المنصة" class="pwa-install-icon">' +
-                '<h2 id="pwaInstallTitle" class="pwa-install-title">📱 تثبيت <span dir="rtl" style="unicode-bidi:isolate;">منصة الدكتور محمد عبد الله</span></h2>' +
+                '<h2 id="pwaInstallTitle" class="pwa-install-title">📱 Install <span dir="ltr" style="unicode-bidi:isolate;">Mr. Islam Abdelwahed Platform</span></h2>' +
                 '<p class="pwa-install-desc">استمتع بتجربة أسرع وأسهل من خلال تثبيت التطبيق على جهازك، والوصول إلى الدروس والاختبارات والواجبات بسهولة.</p>' +
                 stepsHtml +
                 '<div class="pwa-install-actions">' + actionHtml + '</div>' +
