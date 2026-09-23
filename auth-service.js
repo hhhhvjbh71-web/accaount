@@ -2,28 +2,28 @@
 //  auth-service.js — منصة الدكتور محمد عبد الله | عميد الفيزياء
 //  نظام المصادقة الوحيد للمنصة (الطالب + لوحة التحكم)
 //
-//  المبدأ: قاعدة البيانات/خدمة المصادقة هي مصدر الحقيقة — لا المتصفح.
-//   • التحقق من كلمة المرور يتم على خوادم Firebase Authentication (كلمات المرور
-//     مشفّرة هناك ولا تُخزَّن ولا تُنزَّل إلى أي متصفح).
-//   • وجود الحساب يُفحص من قاعدة البيانات (phone_index) قبل أي محاولة دخول.
-//   • الجلسة تحفظها Firebase Auth (رموز موقّعة من الخادم) وتبقى بعد إغلاق المتصفح.
+//  المبدأ: Firestore هو مصدر الحقيقة — لا المتصفح. لا Firebase Authentication
+//  ولا إيميل إطلاقاً: الحساب = مستند users/{رقم الهاتف}.
+//   • إنشاء الحساب = كتابة هذا المستند مباشرة (معاملة ذرّية لا تكتب فوق حساب موجود).
+//   • كلمة المرور تُخزَّن مُجزَّأة (SHA-256 + ملح + رقم الهاتف) في passwordHash.
+//   • الأدمن = وجود مستند admins/{رقم الهاتف} (يُضاف من Firebase Console فقط).
 //   • localStorage هنا "كاش للعرض فقط" بعد نجاح الدخول — لا يُعتمد عليه أبداً.
 //
-//  الفصل المطلوب بين المراحل (كل مرحلة دالة مستقلة):
-//     accountExists(phone)          ← هل الرقم مسجّل؟         (phone_index)
-//     verifyPassword(phone, pw)     ← هل كلمة المرور صحيحة؟    (Firebase Auth)
-//     createSession(fbUser)         ← إنشاء الجلسة وتحميل الحساب (users/{uid})
+//  الفصل بين المراحل (كل مرحلة دالة مستقلة):
+//     accountExists(phone)          ← هل الرقم مسجّل؟         (users/{phone})
+//     verifyPassword(phone, pw)     ← هل كلمة المرور صحيحة؟    (مقارنة التجزئة)
+//     createSession(rec)            ← إنشاء الجلسة وتحميل الحساب
 //     restoreSession()              ← استعادة الجلسة عند فتح الموقع
 // ═══════════════════════════════════════════════════════════════════════
 (function (global) {
     'use strict';
 
     var CFG = {
-        // البريد الداخلي المشتق من رقم الهاتف (لا يُرسل إليه شيء — هو مجرد معرّف للحساب في Firebase Auth)
-        emailDomain: 'phone.drmohamed-physics.app',
+        salt: 'drmohamed-physics-v1',   // ملح تجزئة كلمات المرور (لا تغيّره: كل الحسابات المسجَّلة مجزّأة به)
         readyTimeoutMs: 7000
     };
     var CACHE_KEY = 'iraqiplatform_current_user';   // كاش للعرض فقط
+    var PERSIST_KEY = 'authsvc_persist', ALIVE_KEY = 'authsvc_alive';
     var ADMIN_CACHE_KEY = 'alsaqr_current_user';    // كاش جلسة لوحة التحكم (للعرض فقط)
 
     var MESSAGES = {
@@ -40,7 +40,9 @@
         weak_password: 'كلمة المرور ضعيفة (6 أحرف/أرقام على الأقل) — Password is too weak (min 6 characters).',
         not_admin: 'هذا الحساب ليس حساب مدرس/أدمن — This account is not an administrator.',
         unknown: 'حدث خطأ غير متوقع. حاول مرة أخرى — Something went wrong. Please try again.',
-        setup: 'الخدمة غير مهيأة بعد. تواصل مع الدعم — Service is not configured yet. Please contact support.'
+        // أخطاء من Firestore نفسه (ليست من بيانات الطالب): تُعرض برمز الخطأ ليسهل تشخيصها
+        db_denied: 'تعذّر حفظ الحساب الآن: قاعدة البيانات لم تسمح بالعملية. تواصل مع الدعم — The database did not allow this request. Please contact support.',
+        db_missing: 'قاعدة البيانات غير متاحة حاليًا. تواصل مع الدعم — The database is not available right now. Please contact support.'
     };
 
     var state = { user: null, admin: false, verified: false, ready: false, uid: null };
@@ -48,7 +50,6 @@
     var subscribed = false;
 
     // ── أدوات ───────────────────────────────────────────────────────
-    function fbAuth() { return global.firebase && typeof global.firebase.auth === 'function' ? global.firebase.auth() : null; }
     function db() { return global.db || null; }
     function fv() { return global.firebase && global.firebase.firestore && global.firebase.firestore.FieldValue; }
     function AuthError(code, extra) { var e = new Error(MESSAGES[code] || code); e.code = code; e.detail = extra; return e; }
@@ -63,28 +64,28 @@
         if (s.length === 12 && s.indexOf('20') === 0) s = '0' + s.slice(2);       // +20 1x... → 01x...
         return /^01\d{9}$/.test(s) ? s : null;
     }
-    function phoneToEmail(phone) { return phone + '@' + CFG.emailDomain; }
 
+    // تحويل خطأ Firestore إلى رسالة مفهومة. الحساب يُقرأ/يُكتب في Firestore مباشرة، لذا الأخطاء هنا
+    // هي أخطاء Firestore (permission-denied / not-found ...) وليست أخطاء Firebase Auth.
     function mapAuthError(e) {
         var c = (e && e.code) || '';
-        if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/invalid-login-credentials') return AuthError('wrong_password');
-        if (c === 'auth/user-not-found') return AuthError('account_missing');
-        if (c === 'auth/too-many-requests') return AuthError('too_many_attempts');
-        if (c === 'auth/network-request-failed') return AuthError('network');
-        if (c === 'auth/user-disabled') return AuthError('disabled');
-        if (c === 'auth/invalid-email') return AuthError('invalid_phone');
-        if (c === 'auth/weak-password') return AuthError('weak_password');
-        if (c === 'auth/email-already-in-use') return AuthError('phone_taken');
         if (e && e.code && MESSAGES[e.code]) return e;
-        try { console.error('[AuthService] unexpected error:', c, e && e.message); } catch (_) {}
-        var isSetup = /^(auth\/(operation-not-allowed|configuration-not-found|invalid-api-key|api-key-not-valid.*|app-not-authorized|unauthorized-domain)|permission-denied|failed-precondition|not-found|unauthenticated)$/.test(c);
-        var out = AuthError(isSetup ? 'setup' : 'unknown', e && e.message);
+        var kind = 'unknown', hint = '';
+        if (c === 'permission-denied' || c === 'unauthenticated') {
+            kind = 'db_denied';
+            hint = 'قواعد Firestore الحالية في Firebase Console ترفض قراءة/كتابة users/{رقم الهاتف}. الحل: انسخ firestore.rules من المشروع إلى Firestore ← Rules ← Publish (انظر README-auth.md).';
+        } else if (c === 'not-found') {
+            kind = 'db_missing';
+            hint = 'قاعدة Firestore غير موجودة في مشروع Firebase هذا. الحل: Firebase Console ← Firestore Database ← Create database (وضع Production ثم انشر firestore.rules).';
+        }
+        try { console.error('[AuthService] ' + (hint ? hint + ' ' : 'unexpected error: '), c, e && e.message); } catch (_) {}
+        var out = AuthError(kind, e && e.message);
         if (c) out.message += ' [' + c + ']';
         return out;
     }
     function isNetworkErr(e) {
         var c = (e && e.code) || '';
-        return c === 'unavailable' || c === 'auth/network-request-failed' || c === 'network' || /network|offline|unavailable/i.test((e && e.message) || '');
+        return c === 'unavailable' || c === 'network' || /network|offline|unavailable/i.test((e && e.message) || '');
     }
     function emit() {
         try { global.dispatchEvent(new CustomEvent('authchange', { detail: { user: state.user, admin: state.admin } })); } catch (e) {}
@@ -117,71 +118,81 @@
         } catch (e) {}
     }
 
-    // ── المرحلة 1: هل الحساب موجود؟ (قاعدة البيانات) ──────────────────
+    // ── المصادقة عبر قاعدة البيانات مباشرة (بدون Firebase Auth / بدون إيميل) ─────
+    // الحساب = مستند users/{رقم الهاتف}. كلمة المرور تُخزَّن مُجزَّأة (SHA-256) لا نصًا صريحًا.
+    function sha256Hex(str) {
+        if (!global.crypto || !global.crypto.subtle) return Promise.reject(AuthError('unknown'));
+        return global.crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function (buf) {
+            return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        });
+    }
+    function hashPassword(phone, password) { return sha256Hex(CFG.salt + ':' + phone + ':' + String(password)); }
+    function userRef(id) { return db().collection('users').doc(String(id)); }
+    function errOut(e) { var err = (e && e.code && MESSAGES[e.code]) ? e : (isNetworkErr(e) ? AuthError('network') : mapAuthError(e)); return { ok: false, code: err.code, message: err.message }; }
+    function stripSecrets(d) { var p = Object.assign({}, d); delete p.password; delete p.passwordHash; return p; }
+
+    // مستند الطالب بالرقم (المعرّف = الرقم، مع بحث احتياطي للمستندات القديمة)
+    function fetchUserDoc(phone) {
+        return userRef(phone).get({ source: 'server' }).then(function (snap) {
+            if (snap.exists) return { id: snap.id, data: snap.data() || {} };
+            return db().collection('users').where('phone', '==', phone).limit(1).get({ source: 'server' }).then(function (q) {
+                if (q.empty) return null;
+                var d = q.docs[0]; return { id: d.id, data: d.data() || {} };
+            });
+        });
+    }
     function accountExists(phone) {
         if (!db()) return Promise.reject(AuthError('network'));
-        return db().collection('phone_index').doc(phone).get({ source: 'server' }).then(function (snap) {
-            return !!snap.exists;
-        }, function (e) { throw isNetworkErr(e) ? AuthError('network') : mapAuthError(e); });
+        return fetchUserDoc(phone).then(function (rec) { return !!rec; }, function (e) { throw isNetworkErr(e) ? AuthError('network') : mapAuthError(e); });
     }
-
-    // ── المرحلة 2: هل كلمة المرور صحيحة؟ (Firebase Auth على الخادم) ─────
     function verifyPassword(phone, password) {
-        var a = fbAuth();
-        if (!a) return Promise.reject(AuthError('network'));
-        return a.signInWithEmailAndPassword(phoneToEmail(phone), password).then(function (cred) { return cred.user; }, function (e) { throw mapAuthError(e); });
-    }
-
-    // ── المرحلة 3: إنشاء الجلسة وتحميل الحساب من قاعدة البيانات ─────────
-    function loadProfile(uid) {
-        return db().collection('users').doc(uid).get({ source: 'server' }).then(function (snap) {
-            if (!snap.exists) return null;
-            var d = snap.data() || {};
-            delete d.password;                 // كلمات المرور لا تُستخدم ولا تُعرض أبداً
-            d.id = uid;
-            return d;
-        });
-    }
-    function checkAdmin(uid) {
-        return db().collection('admins').doc(uid).get({ source: 'server' }).then(function (s) { return !!s.exists; }, function () { return false; });
-    }
-    function createSession(fbUser) {
-        var uid = fbUser.uid;
-        return loadProfile(uid).then(function (profile) {
-            if (!profile) { var a = fbAuth(); return (a ? a.signOut() : Promise.resolve()).then(function () { throw AuthError('profile_missing'); }); }
-            return checkAdmin(uid).then(function (isAdm) {
-                var prev = readCache();
-                if (prev && prev.id && String(prev.id) !== String(uid)) purgeUserData();     // حساب مختلف: لا نُبقي شيئاً من الحساب السابق
-                state.user = profile; state.admin = isAdm; state.verified = true; state.uid = uid;
-                writeCache(); emit();
-                return state.user;
-            });
-        });
-    }
-
-    // ── المرحلة 4: استعادة الجلسة عند فتح الموقع ────────────────────────
-    function firstAuthState() {
-        var a = fbAuth();
-        return new Promise(function (resolve) {
-            if (!a) return resolve(null);
-            var un = a.onAuthStateChanged(function (u) { try { un(); } catch (e) {} resolve(u || null); }, function () { resolve(null); });
-        });
-    }
-    function restoreSession() {
-        return firstAuthState().then(function (u) {
-            if (!u) { clearState(); return null; }
-            // تحقق من الخادم أن الحساب ما زال صالحاً (لم يُحذف/يُوقف)
-            return u.reload().then(function () { return createSession(u); }, function (e) {
-                var c = (e && e.code) || '';
-                if (c === 'auth/network-request-failed' || isNetworkErr(e)) {
-                    // بلا اتصال: الهوية تأتي من Firebase (uid موقّع) لا من الكاش؛ الكاش يُستخدم للعرض فقط إن طابق نفس الـ uid
-                    var cached = readCache();
-                    if (cached && String(cached.id) === String(u.uid)) { state.user = cached; state.admin = !!localStorage.getItem(ADMIN_CACHE_KEY); state.verified = false; state.uid = u.uid; emit(); return state.user; }
-                    return null;
+        if (!db()) return Promise.reject(AuthError('network'));
+        return fetchUserDoc(phone).then(function (rec) {
+            if (!rec) throw AuthError('phone_not_registered');
+            if (rec.data.disabled) throw AuthError('disabled');
+            return hashPassword(phone, password).then(function (h) {
+                if (rec.data.passwordHash) { if (rec.data.passwordHash !== h) throw AuthError('wrong_password'); return rec; }
+                if (rec.data.password !== undefined && String(rec.data.password) === String(password)) {   // حساب قديم بكلمة مرور نصية: نرقّيه لتجزئة
+                    userRef(rec.id).update({ passwordHash: h, password: fv().delete() }).catch(function () {});
+                    return rec;
                 }
-                var a = fbAuth();
-                return (a ? a.signOut() : Promise.resolve()).then(function () { clearState(); return null; });   // محذوف/موقوف/رمز غير صالح
+                throw AuthError(rec.data.password !== undefined ? 'wrong_password' : 'account_missing');
             });
+        }, function (e) { throw (e && e.code && MESSAGES[e.code]) ? e : (isNetworkErr(e) ? AuthError('network') : mapAuthError(e)); });
+    }
+
+    // ── إنشاء الجلسة ─────────────────────────────────────────────────
+    function checkAdmin(id) {
+        return db().collection('admins').doc(String(id)).get({ source: 'server' }).then(function (s) { return !!s.exists; }, function () { return false; });
+    }
+    function createSession(rec) {
+        var profile = stripSecrets(rec.data); profile.id = rec.id;
+        return checkAdmin(rec.id).then(function (isAdm) {
+            var prev = readCache();
+            if (prev && prev.id && String(prev.id) !== String(rec.id)) purgeUserData();     // حساب مختلف: لا نُبقي شيئاً من الحساب السابق
+            state.user = profile; state.admin = isAdm; state.verified = true; state.uid = rec.id;
+            writeCache(); emit();
+            return state.user;
+        });
+    }
+    function setPersist(mode) { try { localStorage.setItem(PERSIST_KEY, mode); sessionStorage.setItem(ALIVE_KEY, '1'); } catch (e) {} }
+    function sessionAllowed() { try { return localStorage.getItem(PERSIST_KEY) !== 'session' || sessionStorage.getItem(ALIVE_KEY) === '1'; } catch (e) { return true; } }
+
+    // ── استعادة الجلسة عند فتح الموقع ───────────────────────────────
+    function restoreSession() {
+        var cached = readCache();
+        if (!cached || !cached.id) { clearState(); return Promise.resolve(null); }
+        if (!sessionAllowed()) { purgeUserData(); clearState(); return Promise.resolve(null); }
+        if (!db()) return Promise.resolve(null);
+        return userRef(cached.id).get({ source: 'server' }).then(function (snap) {
+            if (!snap.exists || (snap.data() || {}).disabled) { purgeUserData(); clearState(); return null; }   // حُذف/أُوقف
+            return createSession({ id: snap.id, data: snap.data() || {} });
+        }, function (e) {
+            if (isNetworkErr(e)) {   // بلا اتصال: نعرض الكاش فقط (غير موثّق)
+                state.user = cached; state.admin = !!localStorage.getItem(ADMIN_CACHE_KEY); state.verified = false; state.uid = cached.id; emit();
+                return null;
+            }
+            clearState(); return null;
         }).then(function (user) { subscribeToChanges(); return user; });
     }
     function clearState() {
@@ -190,84 +201,58 @@
         try { localStorage.removeItem(CACHE_KEY); localStorage.removeItem(ADMIN_CACHE_KEY); } catch (e) {}
         if (had) emit();
     }
-    // تغيّر الجلسة من تبويب آخر (خروج/دخول)
+    // خروج/دخول من تبويب آخر
     function subscribeToChanges() {
         if (subscribed) return; subscribed = true;
-        var a = fbAuth(); if (!a) return;
-        a.onAuthStateChanged(function (u) {
-            if (!u && state.user) { purgeUserData(); clearState(); }
-            else if (u && state.uid && u.uid !== state.uid) { createSession(u).catch(function () {}); }
+        global.addEventListener('storage', function (ev) {
+            if (ev.key === CACHE_KEY && !ev.newValue && state.user) { state.user = null; state.admin = false; state.verified = false; state.uid = null; emit(); }
         });
     }
 
-    // ── تسجيل الدخول (يجمع المراحل بالترتيب — كل مرحلة منفصلة) ───────────
+    // ── تسجيل الدخول ────────────────────────────────────────────────
     function login(phoneRaw, password, opts) {
         var phone = normalizePhone(phoneRaw);
         if (!phoneRaw || !password) return Promise.resolve({ ok: false, code: 'invalid_input', message: message('invalid_input') });
         if (!phone) return Promise.resolve({ ok: false, code: 'invalid_phone', message: message('invalid_phone') });
-        var a = fbAuth();
-        var persist = (opts && opts.remember === false) ? 'session' : 'local';
-        var setP = (a && a.setPersistence && global.firebase.auth.Auth && global.firebase.auth.Auth.Persistence)
-            ? a.setPersistence(persist === 'session' ? global.firebase.auth.Auth.Persistence.SESSION : global.firebase.auth.Auth.Persistence.LOCAL).catch(function () {})
-            : Promise.resolve();
-        return setP
-            .then(function () { return accountExists(phone); })                                   // 1) الحساب موجود؟
-            .then(function (exists) {
-                if (!exists) throw AuthError('phone_not_registered');                              //    لا → لا نُنشئ حساباً ولا نجرّب كلمة المرور
-                return verifyPassword(phone, password);                                            // 2) كلمة المرور
-            })
-            .then(function (fbUser) { return createSession(fbUser); })                            // 3) الجلسة
+        var mode = (opts && opts.remember === false) ? 'session' : 'local';
+        return verifyPassword(phone, password)
+            .then(function (rec) { setPersist(mode); return createSession(rec); })
             .then(function (user) { return { ok: true, user: user, admin: state.admin }; })
-            .catch(function (e) {
-                var err = (e && e.code && MESSAGES[e.code]) ? e : mapAuthError(e);
-                return { ok: false, code: err.code, message: err.message };
-            });
+            .catch(errOut);
     }
 
-    // ── تسجيل حساب جديد ─────────────────────────────────────────────
-    function createProfileDocs(fbUser, phone, f) {
-        var uid = fbUser.uid, now = new Date().toISOString();
-        var profile = {
-            id: uid, name: f.name || '', email: '', phone: phone, parentPhone: f.parentPhone || '',
-            grade: f.grade || '', section: f.section || '', governorate: f.governorate || '',
-            enrolledCourses: [], completedLessons: 0, avgScore: 0, streak: 1, createdAt: now
-        };
-        var batch = db().batch();
-        batch.set(db().collection('phone_index').doc(phone), { uid: uid, createdAt: now });
-        batch.set(db().collection('users').doc(uid), profile);
-        return batch.commit();
-    }
+    // ── تسجيل حساب جديد: يُكتب الحساب مباشرة في قاعدة البيانات ثم يدخل الطالب فورًا ─────
     function register(f) {
-        var phone = normalizePhone(f && f.phone);
+        f = f || {};
+        var phone = normalizePhone(f.phone);
         if (!phone) return Promise.resolve({ ok: false, code: 'invalid_phone', message: message('invalid_phone') });
         if (!f.password || String(f.password).length < 6) return Promise.resolve({ ok: false, code: 'weak_password', message: message('weak_password') });
-        var a = fbAuth();
+        if (!db()) return Promise.resolve(errOut(AuthError('network')));
+        var now = new Date().toISOString();
         return accountExists(phone).then(function (exists) {
             if (exists) throw AuthError('phone_taken');
-            return a.createUserWithEmailAndPassword(phoneToEmail(phone), f.password).then(function (cred) {
-                return createProfileDocs(cred.user, phone, f).then(function () { return cred.user; }, function (e) {
-                    // فشلت كتابة الملف بعد إنشاء الحساب: نحاول حذف الحساب اليتيم حتى لا يعلق الرقم
-                    return cred.user.delete().catch(function () {}).then(function () { throw isNetworkErr(e) ? AuthError('network') : mapAuthError(e); });
-                });
-            }, function (e) {
-                if (e && e.code === 'auth/email-already-in-use') {
-                    // حساب Auth موجود بلا فهرس/ملف (تسجيل سابق انقطع): لو نفس كلمة المرور نُكمل الإصلاح، وإلا الرقم محجوز
-                    return verifyPassword(phone, f.password).then(function (u) {
-                        return loadProfile(u.uid).then(function (p) { if (p) throw AuthError('phone_taken'); return createProfileDocs(u, phone, f).then(function () { return u; }); });
-                    }, function () { throw AuthError('phone_taken'); });
-                }
-                throw mapAuthError(e);
-            });
-        }).then(function (fbUser) { return createSession(fbUser); })
+            return hashPassword(phone, f.password);
+        }).then(function (hash) {
+            var profile = {
+                id: phone, name: f.name || '', phone: phone, parentPhone: f.parentPhone || '',
+                grade: f.grade || '', section: f.section || '', governorate: f.governorate || '',
+                enrolledCourses: [], completedLessons: 0, avgScore: 0, streak: 1, createdAt: now, passwordHash: hash
+            };
+            var ref = userRef(phone);
+            return db().runTransaction(function (tx) {          // إنشاء ذرّي: لا يُكتب فوق حساب موجود
+                return tx.get(ref).then(function (s) { if (s.exists) throw AuthError('phone_taken'); tx.set(ref, profile); });
+            }).then(function () { return { id: phone, data: profile }; });
+        }).then(function (rec) { setPersist('local'); return createSession(rec); })
           .then(function (user) { return { ok: true, user: user }; })
-          .catch(function (e) { var err = (e && e.code && MESSAGES[e.code]) ? e : mapAuthError(e); return { ok: false, code: err.code, message: err.message }; });
+          .catch(errOut);
     }
 
     // ── خروج ────────────────────────────────────────────────────────
     function logout() {
-        var a = fbAuth();
-        var p = a ? a.signOut() : Promise.resolve();
-        return p.catch(function () {}).then(function () { purgeUserData(); clearState(); emit(); return true; });
+        purgeUserData(); clearState();
+        try { localStorage.removeItem(PERSIST_KEY); sessionStorage.removeItem(ALIVE_KEY); } catch (e) {}
+        emit();
+        return Promise.resolve(true);
     }
 
     // ── عمليات الحساب الحالي ─────────────────────────────────────────
@@ -275,29 +260,29 @@
     function updateProfile(patch) {
         if (!state.user) return Promise.resolve({ ok: false, code: 'unknown' });
         var clean = {}; EDITABLE.forEach(function (k) { if (patch && patch[k] !== undefined) clean[k] = patch[k]; });
-        return db().collection('users').doc(state.uid).update(clean).then(function () {
+        return userRef(state.uid).update(clean).then(function () {
             Object.assign(state.user, clean); writeCache(); emit(); return { ok: true, user: state.user };
         }, function (e) { return { ok: false, code: isNetworkErr(e) ? 'network' : 'unknown', message: message(isNetworkErr(e) ? 'network' : 'unknown') }; });
     }
     function enroll(courseId) {
         if (!state.user) return Promise.resolve({ ok: false });
         var cid = String(courseId);
-        return db().collection('users').doc(state.uid).update({ enrolledCourses: fv().arrayUnion(cid) }).then(function () {
+        return userRef(state.uid).update({ enrolledCourses: fv().arrayUnion(cid) }).then(function () {
             var list = (state.user.enrolledCourses || []).map(String);
             if (list.indexOf(cid) === -1) state.user.enrolledCourses = list.concat([cid]);
             writeCache(); emit(); return { ok: true };
         }, function (e) { return { ok: false, code: 'unknown', message: e && e.message }; });
     }
     function changePassword(current, next) {
-        var a = fbAuth(), u = a && a.currentUser;
-        if (!u) return Promise.resolve({ ok: false, code: 'unknown', message: message('unknown') });
+        if (!state.user) return Promise.resolve({ ok: false, code: 'unknown', message: message('unknown') });
         if (!next || String(next).length < 6) return Promise.resolve({ ok: false, code: 'weak_password', message: message('weak_password') });
-        var cred = global.firebase.auth.EmailAuthProvider.credential(u.email, current);
-        return u.reauthenticateWithCredential(cred).then(function () { return u.updatePassword(next); })
-            .then(function () { return { ok: true }; }, function (e) { var err = mapAuthError(e); return { ok: false, code: err.code, message: err.message }; });
+        var phone = state.user.phone || state.uid;
+        return verifyPassword(phone, current)
+            .then(function (rec) { return hashPassword(phone, next).then(function (h) { return userRef(rec.id).update({ passwordHash: h }); }); })
+            .then(function () { return { ok: true }; }, errOut);
     }
 
-    // ── الأدمن (لوحة التحكم) ─────────────────────────────────────────
+    // ── الأدمن (لوحة التحكم): وجود مستند admins/{رقم الهاتف} ─────────────
     function isAdmin() { return !!(state.user && state.admin); }
     function requireAdmin() {
         return whenReady().then(function () {
@@ -325,7 +310,7 @@
     function whenReady() { return init(); }
 
     global.AuthService = {
-        CFG: CFG, message: message, messages: MESSAGES, normalizePhone: normalizePhone, phoneToEmail: phoneToEmail,
+        CFG: CFG, message: message, messages: MESSAGES, normalizePhone: normalizePhone,
         accountExists: accountExists, verifyPassword: verifyPassword, createSession: createSession, restoreSession: restoreSession,
         login: login, register: register, logout: logout, changePassword: changePassword, updateProfile: updateProfile, enroll: enroll,
         isAdmin: isAdmin, requireAdmin: requireAdmin, adminLogin: adminLogin,

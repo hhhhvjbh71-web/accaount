@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // الموقع يعتمد على Firestore مباشرة (بدون Firebase Auth): القراءة والكتابة مفتوحة للمجموعات كلها
+    // ما عدا admins: القراءة فقط — مستندات الأدمن تُضاف من Firebase Console يدويًا.
+    match /{col}/{doc=**} {
+      allow read: if true;
+      allow write: if col != 'admins';
+    }
+  }
+}

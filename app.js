@@ -15,7 +15,7 @@
     let lessonSidebarOpen = false;
 
     // ── Auth state ───────────────────────────────────────────────
-    // مصدر الحقيقة الوحيد لتسجيل الدخول: AuthService (Firebase Authentication + قاعدة البيانات).
+    // مصدر الحقيقة الوحيد لتسجيل الدخول: AuthService (مستند users/{رقم الهاتف} في Firestore — بلا إيميل وبلا Firebase Auth).
     // localStorage لم يعد يُعتمد عليه في أي قرار دخول؛ currentUser/isLoggedIn تُملأ فقط
     // من AuthService بعد التحقق من رقم الهاتف وكلمة المرور من الخادم.
     function isAdmin() {
@@ -4099,7 +4099,7 @@
         if (regBtn) regBtn.disabled = true;
         let regRes;
         try {
-            // رقم مسجّل من قبل؟ يُفحص من قاعدة البيانات — ثم يُنشأ الحساب على خدمة المصادقة (كلمة المرور لا تُخزَّن في المتصفح ولا في Firestore)
+            // رقم مسجّل من قبل؟ يُفحص من Firestore — ثم يُكتب مستند الطالب users/{الهاتف} مباشرة (كلمة المرور تُخزَّن مُجزَّأة passwordHash لا نصًا)
             regRes = await window.AuthService.register({
                 name: fullName, phone: phone, parentPhone: parentPhone, grade: gradeLabel,
                 section: section || '', governorate: governorate, password: password
@@ -4169,7 +4169,7 @@
         if (!current) { showToast('Please enter your current password', 'error'); return; }
         if (!validatePassword(newPw)) { showToast('New password must be at least 6 alphanumeric characters', 'error'); return; }
         if (newPw !== confirm) { showToast('New password and confirmation do not match', 'error'); return; }
-        // التحقق من كلمة المرور الحالية يتم على خدمة المصادقة (إعادة مصادقة) وليس بمقارنة نص محلي
+        // التحقق من كلمة المرور الحالية يتم عبر AuthService (مقارنة التجزئة المحفوظة في Firestore) وليس بمقارنة نص محلي
         const r = await window.AuthService.changePassword(current, newPw);
         if (!r.ok) { showToast(r.code === 'wrong_password' ? 'Current password is incorrect' : (r.message || 'Could not change the password'), 'error'); return; }
         showToast('Password changed successfully! 🔒', 'success');
@@ -4612,7 +4612,7 @@
         // Apply theme first (prevents flash of wrong theme)
         initTheme();
 
-        // الجلسة لا تُقرأ من localStorage: تُستعاد من Firebase Auth ثم من ملف المستخدم في قاعدة البيانات (انظر boot أدناه)
+        // الجلسة لا تُقرأ من localStorage: تُستعاد من مستند المستخدم users/{الهاتف} في Firestore (انظر boot أدناه)
 
         // Sync codes from Firebase
         setTimeout(function () {

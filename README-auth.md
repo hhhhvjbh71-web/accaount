@@ -1,20 +1,19 @@
-# نظام الدخول الجديد — خطوات التفعيل (مرة واحدة)
+# نظام الحسابات (بدون Firebase Auth / بدون إيميل)
 
-الدخول الآن: **رقم الهاتف + كلمة المرور** يُفحصان من قاعدة البيانات ومن Firebase Authentication. لا كلمات مرور في المتصفح ولا في Firestore.
+- إنشاء الحساب = كتابة مستند `users/{رقم الهاتف}` مباشرة في Firestore، ثم يدخل الطالب فورًا.
+- كلمة المرور تُخزَّن مُجزَّأة (SHA-256 + ملح) في الحقل `passwordHash` — لا تُخزَّن نصًا صريحًا.
+- تسجيل الدخول = قراءة المستند ومقارنة التجزئة. الحسابات القديمة بكلمة مرور نصية تُرقَّى تلقائيًا عند أول دخول.
+- **الأدمن:** سجّل رقم المدرس كحساب عادي، ثم من Firebase Console ← Firestore أنشئ مستندًا في مجموعة `admins` معرّفه = رقم الهاتف (أي حقل).
+- **القواعد:** انسخ محتوى `firestore.rules` إلى Firestore ← Rules ← Publish.
 
-1. **فعّل Email/Password:** Firebase Console ← Authentication ← Sign-in method ← Email/Password ← Enable.
-2. **انقل المستخدمين الحاليين** (قبل رفع الموقع الجديد؛ الموقع القديم يستمر بالعمل أثناء ذلك):
-   ```
-   npm i firebase-admin
-   node auth-admin.js migrate --key ./serviceAccount.json --dry-run        # معاينة
-   node auth-admin.js migrate --key ./serviceAccount.json --admin-password "كلمة-قوية-جديدة"
-   ```
-   يحافظ على نفس معرّف كل طالب (uid = id القديم) فتبقى محاولات الاختبارات والتقدّم والكورسات مربوطة به.
-3. **اضبط الأدمن:** حساب الأدمن يُنشأ بالخطوة 2 (`admins/{uid}`). لجعل حساب آخر أدمن:
-   `node auth-admin.js make-admin --key ./serviceAccount.json --phone 01xxxxxxxxx`
-4. **انشر قواعد Firestore:** ادمج `firestore.rules.auth-snippet.txt` في قواعدك ثم `firebase deploy --only firestore:rules`.
-5. **ارفع الموقع** (ما عدا `auth-admin.js` و`firestore.rules.auth-snippet.txt` و`README-auth.md`؛ الأولان أُضيفا لقائمة ignore في firebase.json).
-6. بعد التأكد أن الجميع يدخلون: `node auth-admin.js migrate --key ... --strip-passwords` لمسح كلمات المرور القديمة (النص الصريح) من Firestore.
-7. نسيان كلمة المرور: `node auth-admin.js reset-password --key ... --phone 01xxxxxxxxx --password "NewPass123"`.
+## لو ظهرت رسالة خطأ عند إنشاء الحساب
+الرسالة تنتهي برمز بين قوسين `[...]` — هو رمز الخطأ القادم من Firestore نفسه، وفي Console المتصفح (F12) سطر يبدأ بـ `[AuthService]` يشرح الحل.
 
-⚠️ لا تنشر الموقع الجديد قبل الخطوتين 1 و2، وإلا لن يستطيع أحد الدخول.
+| الرمز | المعنى | الحل |
+|---|---|---|
+| `[permission-denied]` | القواعد **المنشورة فعليًا** في Firebase تمنع الكتابة/القراءة على `users` | انشر `firestore.rules` من هذا المجلد: Firestore ← Rules ← Publish |
+| `[not-found]` | قاعدة Firestore غير منشأة في المشروع | Firestore Database ← Create database، ثم انشر القواعد |
+| «تعذّر الاتصال بالخادم» | لا إنترنت، أو مكتبة Firebase محجوبة على شبكة الطالب | فحص الشبكة/حجب `gstatic.com` |
+
+> ملاحظة: `firebase deploy` لا ينشر القواعد لأن `firebase.json` لا يحتوي قسم `firestore` — نشرها يدوي من Console (أو `firebase deploy --only firestore:rules` بعد إضافة القسم عمدًا).
+
