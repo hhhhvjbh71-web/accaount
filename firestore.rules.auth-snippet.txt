@@ -1,0 +1,44 @@
+// ═══════════════════════════════════════════════════════════════════════
+//  قواعد Firestore المطلوبة لنظام الدخول الجديد — ادمجها في firestore.rules عندك
+//  (لا تستبدل قواعدك كلها: أضف هذه القطع، وأبقِ قواعد بقية المجموعات كما هي أو شدّدها لاحقاً)
+//  استبدل phone.drmohamed-physics.app إن غيّرت CFG.emailDomain في auth-service.js
+// ═══════════════════════════════════════════════════════════════════════
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn()  { return request.auth != null; }
+    function isAdmin()   { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+    // البريد الداخلي للحساب = رقم الهاتف + الدومين (لا يمكن لأحد ادّعاء رقم غيره)
+    function ownsPhone(phone) { return signedIn() && request.auth.token.email == phone + '@phone.drmohamed-physics.app'; }
+
+    // فهرس الأرقام: يجيب عن سؤال «هل الرقم مسجّل؟» فقط (get بمعرّف الرقم — بلا list)
+    match /phone_index/{phone} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if ownsPhone(phone) && request.resource.data.uid == request.auth.uid && !exists(/databases/$(database)/documents/phone_index/$(phone));
+      allow update, delete: if isAdmin();
+    }
+
+    // ملف الطالب: صاحبه فقط (أو الأدمن). لا كلمات مرور، ولا تغيير للهاتف أو المعرّف من العميل.
+    match /users/{uid} {
+      allow read:   if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+                    && ownsPhone(request.resource.data.phone)
+                    && request.resource.data.id == uid
+                    && !('password' in request.resource.data) && !('role' in request.resource.data);
+      allow update: if isAdmin()
+                    || (signedIn() && request.auth.uid == uid
+                        && request.resource.data.phone == resource.data.phone
+                        && request.resource.data.id == resource.data.id
+                        && !('password' in request.resource.data) && !('role' in request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    // الأدمن: قراءة مستند نفسك فقط؛ الكتابة من Admin SDK (auth-admin.js make-admin) فقط
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+  }
+}

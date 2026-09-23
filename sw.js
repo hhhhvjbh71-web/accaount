@@ -32,7 +32,7 @@
 'use strict';
 
 // ⚠️ هذا السطر يتحدّث تلقائيًا مع كل تشغيل لسكربت update-version.*
-const APP_VERSION = '20260923-1828';
+const APP_VERSION = '20260923-2032';
 
 const STATIC_CACHE  = 'manassa-static-'  + APP_VERSION;
 const RUNTIME_CACHE = 'manassa-runtime-' + APP_VERSION;
@@ -44,8 +44,8 @@ const CURRENT_CACHES = [STATIC_CACHE, RUNTIME_CACHE];
 const PRECACHE_URLS = [
   'manifest.json',
   'offline.html',
-  'icons/icon-192.png',
-  'icons/icon-512.png'
+  'icon-192.png',
+  'icon-512.png'
 ];
 
 // امتدادات بيتم التعامل معها كـ "أصول ثابتة" (Cache First)

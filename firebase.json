@@ -7,7 +7,8 @@
       "**/node_modules/**",
       "update-version.py",
       "README-CACHE.md",
-      "tools/**",
+      "auth-admin.js",
+      "firestore.rules.auth-snippet.txt",
       "**/*.md"
     ],
     "cleanUrls": false,

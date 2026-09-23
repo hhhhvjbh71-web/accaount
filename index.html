@@ -71,17 +71,17 @@
          PWA — تطبيق ويب تقدمي (Progressive Web App)
          منصة الدكتور محمد عبد الله
          ═══════════════════════════════════════════════════════════ -->
-  <link rel="manifest" href="manifest.json?v=20260923-1828">
+  <link rel="manifest" href="manifest.json?v=20260923-2032">
   <meta name="theme-color" content="#1D1038">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="د. محمد عبد الله">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="pwa-install.css?v=20260923-1828">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="pwa-install.css?v=20260923-2032">
 
   <link rel="preload" as="image" href="teacher-hero.webp?v=20260923" type="image/webp" fetchpriority="high">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -98,7 +98,7 @@
     })();
   </script>
 
-  <link rel="stylesheet" href="style.css?v=20260923-1828">
+  <link rel="stylesheet" href="style.css?v=20260923-2032">
 
   <!-- ═══════════════════════════════════════════════════════════
          شاشة التحميل — منصة الدكتور محمد عبد الله | عميد الفيزياء
@@ -304,33 +304,33 @@
          ════════════════════════════════════════════════ -->
 
   <!-- 1. إعداد Firebase -->
-  <script src="firebase-config.js?v=20260923-1828"></script>
-  <script src="firebase-service.js?v=20260923-1828"></script>
+  <script src="firebase-config.js?v=20260923-2032"></script>
+  <script src="firebase-service.js?v=20260923-2032"></script>
   <!-- نظام المصادقة الوحيد: Firebase Auth + قاعدة البيانات (يُحمَّل قبل data.js وapp.js) -->
-  <script src="auth-service.js?v=20260923-1828"></script>
+  <script src="auth-service.js?v=20260923-2032"></script>
 
   <!-- 2. البيانات والمنطق المشترك -->
-  <script src="data.js?v=20260923-1828"></script>
+  <script src="data.js?v=20260923-2032"></script>
 
   <!-- 3. قوالب HTML — مفصولة عن المنطق -->
-  <script src="templates.js?v=20260923-1828"></script>
+  <script src="templates.js?v=20260923-2032"></script>
 
   <!-- 4. الجسر مع الداشبورد -->
-  <script src="dashboard-bridge.js?v=20260923-1828"></script>
+  <script src="dashboard-bridge.js?v=20260923-2032"></script>
   <!-- 4b. نظام الاختبارات (محاولات Firestore + واجهة الطالب) — بعد الـ bridge وقبل app.js -->
-  <script src="quiz-service.js?v=20260923-1828"></script>
-  <script src="quiz-ui.js?v=20260923-1828"></script>
+  <script src="quiz-service.js?v=20260923-2032"></script>
+  <script src="quiz-ui.js?v=20260923-2032"></script>
 
   <!-- 5. التطبيق الرئيسي -->
-  <script src="app.js?v=20260923-1828"></script>
+  <script src="app.js?v=20260923-2032"></script>
 
   <!-- 6. Cache Busting — يجب أن يكون آخر script -->
   <!-- يتحقق تلقائياً من version.json ويُعيد التحميل عند وجود تحديث -->
-  <script src="cache-buster.js?v=20260923-1828"></script>
+  <script src="cache-buster.js?v=20260923-2032"></script>
 
   <!-- 7. PWA — تسجيل Service Worker + نافذة تثبيت التطبيق -->
   <!-- إضافة مستقلة، لا تتدخل في أي كود سابق -->
-  <script src="pwa-install.js?v=20260923-1828"></script>
+  <script src="pwa-install.js?v=20260923-2032"></script>
 
   <!-- ═══════════════════════════════════════════════════════════
          زر لوحة التحكم + نافذة دخول الأدمن (هاتف + كلمة مرور — تُفحص من Firebase)
